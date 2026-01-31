@@ -35,7 +35,7 @@ const RegisterPage: React.FC<Props> = ({ onLogin }) => {
     setError('');
     setLoading(true);
     try {
-      const { token } = await api.auth.register(formData.email, formData.password);
+      const { token } = await api.auth.register(formData.email, formData.password, formData.name);
       setToken(token);
       onLogin();
     } catch (err: unknown) {
@@ -126,6 +126,18 @@ const RegisterPage: React.FC<Props> = ({ onLogin }) => {
                   placeholder="设置密码" 
                   className="w-full pl-10 pr-4 py-3.5 bg-gray-50/50 border border-transparent rounded-2xl outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 transition-all text-xs font-semibold"
                   value={formData.password}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-colors" size={14} />
+                <input 
+                  type="password" 
+                  name="confirmPassword"
+                  required
+                  placeholder="确认密码" 
+                  className="w-full pl-10 pr-4 py-3.5 bg-gray-50/50 border border-transparent rounded-2xl outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 transition-all text-xs font-semibold"
+                  value={formData.confirmPassword}
                   onChange={handleChange}
                 />
               </div>

@@ -1,22 +1,21 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.js';
-import { db, COLLECTIONS } from '../lib/firebase.js';
-import { FieldValue } from 'firebase-admin/firestore';
+import { User } from '../lib/mongodb.js';
 
 export const usersRouter = Router();
 usersRouter.use(authMiddleware);
 
 usersRouter.get('/me', async (req: any, res) => {
   try {
-    const doc = await db.collection(COLLECTIONS.users).doc(req.user.id).get();
-    if (!doc.exists) return res.status(404).json({ error: 'User not found' });
-    const d = doc.data()!;
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
     return res.json({
-      id: doc.id,
-      email: d.email,
-      avatar: d.avatar ?? null,
-      language: d.language ?? null,
-      theme: d.theme ?? null,
+      id: user._id.toString(),
+      email: user.email,
+      displayName: user.displayName ?? user.email.split('@')[0],
+      avatar: user.avatar ?? null,
+      language: user.language ?? null,
+      theme: user.theme ?? null,
     });
   } catch (e) {
     console.error(e);
@@ -26,21 +25,21 @@ usersRouter.get('/me', async (req: any, res) => {
 
 usersRouter.patch('/me', async (req: any, res) => {
   try {
-    const { avatar, language, theme } = req.body;
-    const data: Record<string, unknown> = { updatedAt: FieldValue.serverTimestamp() };
-    if (avatar !== undefined) data.avatar = avatar;
-    if (language !== undefined) data.language = language;
-    if (theme !== undefined) data.theme = theme;
-    const ref = db.collection(COLLECTIONS.users).doc(req.user.id);
-    await ref.update(data);
-    const doc = await ref.get();
-    const d = doc.data()!;
+    const { avatar, language, theme, displayName } = req.body;
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (avatar !== undefined) user.avatar = avatar;
+    if (language !== undefined) user.language = language;
+    if (theme !== undefined) user.theme = theme;
+    if (displayName !== undefined) user.displayName = displayName;
+    await user.save();
     return res.json({
-      id: doc.id,
-      email: d.email,
-      avatar: d.avatar ?? null,
-      language: d.language ?? null,
-      theme: d.theme ?? null,
+      id: user._id.toString(),
+      email: user.email,
+      displayName: user.displayName ?? user.email.split('@')[0],
+      avatar: user.avatar ?? null,
+      language: user.language ?? null,
+      theme: user.theme ?? null,
     });
   } catch (e) {
     console.error(e);

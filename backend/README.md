@@ -1,21 +1,18 @@
 # SaleSwift Backend
 
-Node.js + Express + TypeScript 后端，使用 **Firebase Firestore** 作为数据库，提供认证、CRUD 与 AI 代理接口。
+Node.js + Express + TypeScript 后端，使用 **MongoDB** 作为数据库，提供认证、CRUD 与 AI 代理接口。
 
 ## 环境要求
 
 - Node.js 18+
 - npm 或 pnpm
-- Firebase 项目（Firestore 已启用）
+- MongoDB（或 MongoDB Atlas）
 
 ## 配置
 
-1. 复制 `.env.example` 为 `.env`
-2. 填写 `JWT_SECRET`、`GEMINI_API_KEY`（AI 功能需要）、`GOOGLE_OAUTH_CLIENT_ID`（与前端 Google 登录 Client ID 一致，用于校验 ID Token）
-3. 配置 Firebase 凭证（任选其一）：
-   - **本地开发**：在 [Firebase 控制台](https://console.firebase.google.com) → 项目设置 → 服务账号 → 生成新的私钥，下载 JSON 后设置 `GOOGLE_APPLICATION_CREDENTIALS=./path-to-service-account.json`
-   - **无文件环境**：将上述 JSON 内容字符串化后填入 `FIREBASE_SERVICE_ACCOUNT_JSON`
-   - 或分别设置 `FIREBASE_PROJECT_ID`、`FIREBASE_CLIENT_EMAIL`、`FIREBASE_PRIVATE_KEY`
+1. 复制 `.env.example` 为 `.env`（或使用现有 `.env`）
+2. 填写 `JWT_SECRET`、`GEMINI_API_KEY`（AI 功能需要）、`GOOGLE_OAUTH_CLIENT_ID`（与前端 Google 登录 Client ID 一致，用于校验 ID Token）。若网络无法直连 Google API，可设置 `GEMINI_BASE_URL` 指向代理地址（如 `https://your-proxy.com/v1beta`）。
+3. 配置 MongoDB 连接字符串：`MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/dbname?appName=...`
 
 ## 安装与运行
 
@@ -32,35 +29,15 @@ npm run dev
 npm run db:init
 ```
 
-成功会输出「Firestore 连接成功」，失败会输出错误并退出码 1。
+成功会输出「MongoDB 连接成功」，失败会输出错误并退出码 1。
 
-## Firestore 集合
+## MongoDB 集合
 
 - `users`：用户（email 用于登录查询；含 `authProvider: 'email' | 'google'`）
 - `customers`：客户（字段 `userId` 隔离）
 - `interactions`：互动（`userId`、可选 `customerId`）
 - `schedules`：日程（`userId`、可选 `customerId`）
-- `coursePlans`：课程规划（`userId`、`customerId`）
-
-### Firestore 安全规则
-
-当前仅后端通过 Admin SDK 访问 Firestore，前端不直连。规则文件：`firestore.rules`（禁止客户端直接读写）。部署规则：
-
-```bash
-firebase deploy --only firestore:rules
-```
-
-（需在项目根目录配置 `firebase.json` 指向本 backend 或规则文件路径。）
-
-### Firestore 复合索引
-
-带 `userId` + `customerId` 的列表查询需要复合索引。索引定义见 `firestore.indexes.json`。部署索引：
-
-```bash
-firebase deploy --only firestore:indexes
-```
-
-若未建索引，相关接口会报错，可按控制台错误中的链接在 Firebase 控制台一键创建。
+- `courseplans`：课程规划（`userId`、`customerId`）
 
 ## API 概览
 

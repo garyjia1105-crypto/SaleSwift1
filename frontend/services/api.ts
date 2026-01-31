@@ -31,27 +31,27 @@ async function request<T>(
 
 export const api = {
   auth: {
-    register: (email: string, password: string) =>
-      request<{ user: { id: string; email: string; avatar?: string; language?: string; theme?: string }; token: string }>(
+    register: (email: string, password: string, name?: string) =>
+      request<{ user: { id: string; email: string; displayName?: string; avatar?: string; language?: string; theme?: string }; token: string }>(
         '/api/auth/register',
-        { method: 'POST', body: JSON.stringify({ email, password }) }
+        { method: 'POST', body: JSON.stringify({ email, password, name }) }
       ),
     login: (email: string, password: string) =>
-      request<{ user: { id: string; email: string; avatar?: string; language?: string; theme?: string }; token: string }>(
+      request<{ user: { id: string; email: string; displayName?: string; avatar?: string; language?: string; theme?: string }; token: string }>(
         '/api/auth/login',
         { method: 'POST', body: JSON.stringify({ email, password }) }
       ),
     google: (idToken: string) =>
-      request<{ user: { id: string; email: string; avatar?: string; language?: string; theme?: string }; token: string }>(
+      request<{ user: { id: string; email: string; displayName?: string; avatar?: string; language?: string; theme?: string }; token: string }>(
         '/api/auth/google',
         { method: 'POST', body: JSON.stringify({ idToken }) }
       ),
   },
   users: {
     getMe: () =>
-      request<{ id: string; email: string; avatar?: string; language?: string; theme?: string }>('/api/users/me'),
-    patchMe: (body: { avatar?: string; language?: string; theme?: string }) =>
-      request<{ id: string; email: string; avatar?: string; language?: string; theme?: string }>('/api/users/me', {
+      request<{ id: string; email: string; displayName?: string; avatar?: string; language?: string; theme?: string }>('/api/users/me'),
+    patchMe: (body: { avatar?: string; language?: string; theme?: string; displayName?: string }) =>
+      request<{ id: string; email: string; displayName?: string; avatar?: string; language?: string; theme?: string }>('/api/users/me', {
         method: 'PATCH',
         body: JSON.stringify(body),
       }),

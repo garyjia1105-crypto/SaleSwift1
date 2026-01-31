@@ -5,14 +5,24 @@ import * as ai from '../ai/gemini.js';
 export const aiRouter = Router();
 aiRouter.use(authMiddleware);
 
+function safeErrorMsg(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (msg.includes('API_KEY') || msg.includes('apiKey') || msg.includes('apikey')) return 'API key not configured or invalid';
+  if (msg.includes('ENOTFOUND') || msg.includes('ETIMEDOUT') || msg.includes('fetch')) return 'Unable to reach AI service. Check your network.';
+  if (msg.includes('429') || msg.includes('quota') || msg.includes('resource_exhausted')) return 'AI quota exceeded. Try again later.';
+  if (msg.includes('404') || msg.includes('model')) return 'AI model unavailable. Please update configuration.';
+  if (msg.length > 120) return 'AI service error. Check backend logs.';
+  return msg || 'AI analysis failed';
+}
+
 aiRouter.post('/analyze-sales-interaction', async (req, res) => {
   try {
     const { input, audioData } = req.body;
     const result = await ai.analyzeSalesInteraction(input, audioData);
     return res.json(result);
   } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: 'AI analysis failed' });
+    console.error('analyze-sales-interaction:', e);
+    return res.status(500).json({ error: safeErrorMsg(e) });
   }
 });
 

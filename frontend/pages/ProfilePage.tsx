@@ -22,6 +22,7 @@ import { translations, Language } from '../translations';
 import { Theme } from '../App';
 
 interface Props {
+  user: { email: string; displayName: string } | null;
   onLogout: () => void;
   interactionCount: number;
   customerCount: number;
@@ -82,6 +83,7 @@ const MenuItem: React.FC<{ icon: React.ReactNode, label: string, color?: string,
 );
 
 const ProfilePage: React.FC<Props> = ({ 
+  user,
   onLogout, 
   interactionCount, 
   customerCount, 
@@ -126,7 +128,7 @@ const ProfilePage: React.FC<Props> = ({
             {avatar ? (
               <img src={avatar} className="w-full h-full object-cover" alt="Avatar" />
             ) : (
-              <span className="text-white">JD</span>
+              <span className="text-white">{(user?.displayName || user?.email || '?').slice(0, 2).toUpperCase()}</span>
             )}
             <button 
               onClick={() => fileInputRef.current?.click()}
@@ -137,11 +139,13 @@ const ProfilePage: React.FC<Props> = ({
           </div>
           <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleAvatarChange} />
         </div>
-        <h2 className={`text-lg font-bold leading-none ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>James Doe</h2>
+        <h2 className={`text-lg font-bold leading-none ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          {user?.displayName || user?.email || '—'}
+        </h2>
         <p className={`text-[10px] mt-2 font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${
           theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-400'
         }`}>
-          Sales Director • Global
+          {user?.email || ''}
         </p>
       </header>
 

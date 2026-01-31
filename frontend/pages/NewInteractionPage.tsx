@@ -37,6 +37,7 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newCustomerData, setNewCustomerData] = useState({ name: '', company: '' });
   const [selectedFile, setSelectedFile] = useState<{ file: File, base64: string } | null>(null);
+  const [analyzeError, setAnalyzeError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -45,6 +46,7 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
   const handleAnalyze = async () => {
     if (!hasContent) return;
     setIsAnalyzing(true);
+    setAnalyzeError('');
     try {
       const audioPayload = selectedFile ? { data: selectedFile.base64, mimeType: selectedFile.file.type } : undefined;
       const aiResult = await analyzeSalesInteraction(input, audioPayload);
@@ -55,7 +57,11 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
         setNewCustomerData({ name: aiResult.customerProfile.name || '', company: aiResult.customerProfile.company || '' });
         setShowLinkModal(true);
       }
-    } catch (e) { console.error(e); } finally { setIsAnalyzing(false); }
+    } catch (e) {
+      setAnalyzeError((e as Error)?.message || 'AI analysis failed');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const finalizeSave = async (result: Interaction, customerId: string) => {
@@ -95,7 +101,7 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
               className="w-full h-32 p-4 bg-white border border-gray-100 rounded-2xl focus:ring-1 focus:ring-blue-500 outline-none transition-all text-xs font-medium leading-relaxed resize-none soft-shadow"
               placeholder={t.placeholder}
               value={input}
-              onChange={e => setInput(e.target.value)}
+              onChange={e => { setInput(e.target.value); setAnalyzeError(''); }}
             />
           </div>
 
@@ -142,6 +148,9 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
           </div>
         </div>
 
+        {analyzeError && (
+          <p className="text-[10px] text-rose-600 font-medium px-2">{analyzeError}</p>
+        )}
         <button
           onClick={handleAnalyze}
           disabled={isAnalyzing || !hasContent}

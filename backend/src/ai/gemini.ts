@@ -3,11 +3,14 @@ import { GoogleGenAI, Type } from '@google/genai';
 const getAI = () => {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error('GEMINI_API_KEY not set');
-  return new GoogleGenAI({ apiKey: key });
+  const baseUrl = process.env.GEMINI_BASE_URL?.trim();
+  const opts: { apiKey: string; httpOptions?: { baseUrl: string } } = { apiKey: key };
+  if (baseUrl) opts.httpOptions = { baseUrl };
+  return new GoogleGenAI(opts);
 };
 
 const getModel = (prefer: 'flash' | 'pro' = 'flash') => {
-  return prefer === 'pro' ? 'gemini-2.0-flash-exp' : 'gemini-2.0-flash-exp';
+  return prefer === 'pro' ? 'gemini-2.0-flash' : 'gemini-2.0-flash';
 };
 
 const EVALUATION_SCHEMA = {

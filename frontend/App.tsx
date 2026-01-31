@@ -66,6 +66,7 @@ const App: React.FC = () => {
     const th = localStorage.getItem('theme');
     return (VALID_THEMES.includes(th as Theme) ? th : 'classic') as Theme;
   });
+  const [user, setUser] = useState<{ email: string; displayName: string } | null>(null);
   const [avatar, setAvatar] = useState<string | null>(() => localStorage.getItem('user_avatar'));
   const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem('custom_api_key') || '');
   const [aiModel, setAiModel] = useState<string>(() => localStorage.getItem('custom_ai_model') || 'gemini-3-flash-preview');
@@ -105,12 +106,15 @@ const App: React.FC = () => {
     if (!isLoggedIn) return;
     setDataLoading(true);
     Promise.all([
+      api.users.getMe(),
       api.interactions.list(),
       api.customers.list(),
       api.schedules.list(),
       api.coursePlans.list(),
     ])
-      .then(([ints, custs, scheds, plans]) => {
+      .then(([me, ints, custs, scheds, plans]) => {
+        setUser({ email: me.email, displayName: me.displayName ?? me.email.split('@')[0] });
+        if (me.avatar) setAvatar(me.avatar);
         setInteractions(ints as Interaction[]);
         setCustomers(custs as Customer[]);
         setSchedules(scheds as Schedule[]);
@@ -132,6 +136,7 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     setToken(null);
+    setUser(null);
     setIsLoggedIn(false);
     navigate('/login');
   };
@@ -285,7 +290,9 @@ const App: React.FC = () => {
                 {avatar ? (
                   <img src={avatar} className="w-full h-full object-cover" alt="Profile" />
                 ) : (
-                  <span className={`${themeStyles.text} font-black text-[10px]`}>JD</span>
+                  <span className={`${themeStyles.text} font-black text-[10px]`}>
+                    {(user?.displayName || user?.email || '?').slice(0, 2).toUpperCase()}
+                  </span>
                 )}
               </Link>
             </div>
@@ -297,7 +304,7 @@ const App: React.FC = () => {
             <Routes>
               <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
               <Route path="/register" element={<RegisterPage onLogin={handleLogin} />} />
-              <Route path="/" element={<DashboardPage interactions={interactions} lang={language} theme={theme} />} />
+              <Route path="/" element={<DashboardPage interactions={interactions} customers={customers} schedules={schedules} user={user} lang={language} theme={theme} />} />
               <Route path="/new" element={<NewInteractionPage onSave={saveInteraction} customers={customers} interactions={interactions} onAddCustomer={addCustomer} lang={language} />} />
               <Route path="/schedules" element={<SchedulePage schedules={schedules} customers={customers} onAddSchedule={addSchedule} onToggleStatus={toggleScheduleStatus} lang={language} />} />
               <Route path="/customers" element={<CustomerManagementPage customers={customers} onSync={saveCustomers} onAdd={addCustomer} lang={language} />} />
@@ -307,15 +314,15 @@ const App: React.FC = () => {
               <Route path="/interaction/:id" element={<InteractionDetailPage interactions={interactions} schedules={schedules} onAddSchedule={addSchedule} lang={language} />} />
               <Route path="/profile" element={
                 <ProfilePage 
+                  user={user}
                   onLogout={handleLogout} 
                   interactionCount={interactions.length} 
                   customerCount={customers.length} 
                   lang={language} 
                   onSetLanguage={setLanguage} 
                   theme={theme} 
-                  onSetTheme={setTheme} 
                   avatar={avatar} 
-                  onSetAvatar={setAvatar}
+                  onSetAvatar={(v) => { setAvatar(v); if (v) api.users.patchMe({ avatar: v }).catch(() => {}); }}
                   apiKey={apiKey}
                   setApiKey={setApiKey}
                   aiModel={aiModel}
