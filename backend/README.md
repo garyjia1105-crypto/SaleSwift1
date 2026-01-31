@@ -43,6 +43,8 @@ npm run db:init
 
 后端以 **REST API** 形式对外提供服务，所有接口前缀为 `/api`，供前端统一调用。
 
+**完整 API 文档**：[docs/API.md](docs/API.md)（请求/响应格式、参数说明、错误码）
+
 - **入口与健康检查**
   - `GET /api` - 返回 API 元数据（name, version, basePath, resources）
   - `GET /api/health` - 健康检查，返回 `{ ok: true }`
