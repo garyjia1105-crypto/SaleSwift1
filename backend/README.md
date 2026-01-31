@@ -39,9 +39,15 @@ npm run db:init
 - `schedules`：日程（`userId`、可选 `customerId`）
 - `courseplans`：课程规划（`userId`、`customerId`）
 
-## API 概览
+## REST API 概览
 
-- `POST /api/auth/register` - 注册（email, password）
+后端以 **REST API** 形式对外提供服务，所有接口前缀为 `/api`，供前端统一调用。
+
+- **入口与健康检查**
+  - `GET /api` - 返回 API 元数据（name, version, basePath, resources）
+  - `GET /api/health` - 健康检查，返回 `{ ok: true }`
+- **认证**
+  - `POST /api/auth/register` - 注册（email, password）
 - `POST /api/auth/login` - 登录（email, password），返回 JWT
 - `POST /api/auth/google` - Google 登录（body: `{ idToken }`），校验 ID Token 后查/建用户，返回 JWT
 - `GET /api/users/me` - 当前用户（需 Authorization: Bearer &lt;token&gt;）

@@ -9,6 +9,7 @@ if (process.env.HTTPS_PROXY || process.env.HTTP_PROXY) {
 import express from 'express';
 import { connectDB } from './lib/mongodb.js';
 import cors from 'cors';
+import { API_PREFIX, API_VERSION, API_RESOURCES } from './api/constants.js';
 import { authRouter } from './routes/auth.js';
 import { usersRouter } from './routes/users.js';
 import { customersRouter } from './routes/customers.js';
@@ -23,18 +24,32 @@ const PORT = process.env.PORT ?? 4000;
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 
-app.use('/api/auth', authRouter);
-app.use('/api/users', usersRouter);
-app.use('/api/customers', customersRouter);
-app.use('/api/interactions', interactionsRouter);
-app.use('/api/schedules', schedulesRouter);
-app.use('/api/course-plans', coursePlansRouter);
-app.use('/api/ai', aiRouter);
+// REST API 统一前缀与入口
+app.get(API_PREFIX, (_req, res) => {
+  res.json({
+    name: 'SaleSwift REST API',
+    version: API_VERSION,
+    basePath: API_PREFIX,
+    resources: API_RESOURCES,
+  });
+});
+app.get(`${API_PREFIX}/health`, (_req, res) => res.json({ ok: true }));
 
-app.get('/api/health', (_req, res) => res.json({ ok: true }));
+app.use(`${API_PREFIX}/auth`, authRouter);
+app.use(`${API_PREFIX}/users`, usersRouter);
+app.use(`${API_PREFIX}/customers`, customersRouter);
+app.use(`${API_PREFIX}/interactions`, interactionsRouter);
+app.use(`${API_PREFIX}/schedules`, schedulesRouter);
+app.use(`${API_PREFIX}/course-plans`, coursePlansRouter);
+app.use(`${API_PREFIX}/ai`, aiRouter);
 
 // 处理 favicon 请求，避免 404
 app.get('/favicon.ico', (_req, res) => res.status(204).end());
+
+// 未知 API 路径返回 JSON 404
+app.use(API_PREFIX, (_req, res) => {
+  res.status(404).json({ error: 'Not Found', path: API_PREFIX });
+});
 
 connectDB().then(() => {
   app.listen(PORT, () => {

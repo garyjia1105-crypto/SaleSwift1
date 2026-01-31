@@ -1,36 +1,8 @@
+/**
+ * AI 服务：统一通过后端 REST API（api.ai）调用，不再直接请求第三方
+ */
 import type { Interaction, Customer, RolePlayEvaluation, CoursePlan } from '../types';
-import { getToken } from './api';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-
-async function aiRequest<T>(path: string, body: unknown): Promise<T> {
-  const token = getToken();
-  try {
-    const res = await fetch(`${API_BASE}${path}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || res.statusText || 'AI request failed');
-    return data as T;
-  } catch (err) {
-    // 过滤掉浏览器扩展相关的错误
-    const error = err as Error;
-    if (error.message?.includes('message channel closed') || 
-        error.message?.includes('listener indicated') ||
-        error.message?.includes('content.bundle.js')) {
-      // 这是浏览器扩展错误，忽略它，但重新抛出原始错误
-      console.warn('浏览器扩展错误已忽略:', error.message);
-      // 继续抛出，但使用更友好的消息
-      throw new Error('网络请求失败，请检查网络连接或稍后重试');
-    }
-    throw err;
-  }
-}
+import { api } from './api';
 
 export async function analyzeSalesInteraction(
   input: string,
@@ -41,11 +13,11 @@ export async function analyzeSalesInteraction(
   metrics: Interaction['metrics'];
   suggestions: string[];
 }> {
-  return aiRequest('/api/ai/analyze-sales-interaction', { input, audioData });
+  return api.ai.analyzeSalesInteraction({ input, audioData });
 }
 
 export async function rolePlayInit(customer: Customer, context: string): Promise<string> {
-  const { text } = await aiRequest<{ text: string }>('/api/ai/role-play-init', { customer, context });
+  const { text } = await api.ai.rolePlayInit({ customer, context });
   return text;
 }
 
@@ -55,26 +27,21 @@ export async function rolePlayMessage(
   history: { role: string; text: string }[],
   message: string
 ): Promise<string> {
-  const { text } = await aiRequest<{ text: string }>('/api/ai/role-play-message', {
-    customer,
-    context,
-    history,
-    message,
-  });
+  const { text } = await api.ai.rolePlayMessage({ customer, context, history, message });
   return text;
 }
 
 export async function evaluateRolePlay(history: { role: string; text: string }[]): Promise<RolePlayEvaluation> {
-  return aiRequest<RolePlayEvaluation>('/api/ai/evaluate-role-play', { history });
+  return api.ai.evaluateRolePlay({ history });
 }
 
 export async function transcribeAudio(base64Data: string, mimeType: string): Promise<string> {
-  const { text } = await aiRequest<{ text: string }>('/api/ai/transcribe-audio', { base64Data, mimeType });
+  const { text } = await api.ai.transcribeAudio({ base64Data, mimeType });
   return text;
 }
 
 export async function deepDiveIntoInterest(interest: string, customer: Customer): Promise<string> {
-  const { text } = await aiRequest<{ text: string }>('/api/ai/deep-dive-interest', { interest, customer });
+  const { text } = await api.ai.deepDiveInterest({ interest, customer });
   return text;
 }
 
@@ -84,12 +51,7 @@ export async function continueDeepDiveIntoInterest(
   history: { role: string; text: string }[],
   question: string
 ): Promise<string> {
-  const { text } = await aiRequest<{ text: string }>('/api/ai/continue-deep-dive', {
-    interest,
-    customer,
-    history,
-    question,
-  });
+  const { text } = await api.ai.continueDeepDive({ interest, customer, history, question });
   return text;
 }
 
@@ -98,16 +60,12 @@ export async function askAboutInteraction(
   history: { role: string; text: string }[],
   question: string
 ): Promise<string> {
-  const { text } = await aiRequest<{ text: string }>('/api/ai/ask-about-interaction', {
-    interaction,
-    history,
-    question,
-  });
+  const { text } = await api.ai.askAboutInteraction({ interaction, history, question });
   return text;
 }
 
 export async function generateCoursePlan(customer: Customer, context: string): Promise<Partial<CoursePlan>> {
-  return aiRequest<Partial<CoursePlan>>('/api/ai/generate-course-plan', { customer, context });
+  return api.ai.generateCoursePlan({ customer, context });
 }
 
 export async function parseScheduleVoice(text: string): Promise<{
@@ -117,7 +75,7 @@ export async function parseScheduleVoice(text: string): Promise<{
   customerName?: string;
   description?: string;
 }> {
-  return aiRequest('/api/ai/parse-schedule-voice', { text });
+  return api.ai.parseScheduleVoice({ text });
 }
 
 export async function parseCustomerVoiceInput(text: string): Promise<{
@@ -126,10 +84,10 @@ export async function parseCustomerVoiceInput(text: string): Promise<{
   role?: string;
   industry?: string;
 }> {
-  return aiRequest('/api/ai/parse-customer-voice', { text });
+  return api.ai.parseCustomerVoice({ text });
 }
 
 export async function extractSearchKeywords(text: string): Promise<string> {
-  const { keywords } = await aiRequest<{ keywords: string }>('/api/ai/extract-search-keywords', { text });
-  return keywords || '';
+  const { keywords } = await api.ai.extractSearchKeywords({ text });
+  return keywords ?? '';
 }
