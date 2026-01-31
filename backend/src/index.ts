@@ -33,6 +33,9 @@ app.use('/api/ai', aiRouter);
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
+// 处理 favicon 请求，避免 404
+app.get('/favicon.ico', (_req, res) => res.status(204).end());
+
 connectDB().then(() => {
   app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);

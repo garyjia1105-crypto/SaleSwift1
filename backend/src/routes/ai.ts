@@ -74,11 +74,27 @@ aiRouter.post('/transcribe-audio', async (req, res) => {
     if (!base64Data) {
       return res.status(400).json({ error: 'base64Data required' });
     }
-    const text = await ai.transcribeAudio(base64Data, mimeType || 'audio/webm');
+    if (base64Data.length < 100) {
+      return res.status(400).json({ error: '音频数据太短，请重新录音（至少录音2秒）' });
+    }
+    
+    // 支持的音频格式
+    const supportedTypes = ['audio/webm', 'audio/mp4', 'audio/ogg', 'audio/wav', 'audio/mpeg'];
+    const finalMimeType = mimeType && supportedTypes.some(t => mimeType.includes(t.split('/')[1])) 
+      ? mimeType 
+      : 'audio/webm';
+    
+    console.log('转录音频，MIME类型:', finalMimeType, '数据长度:', base64Data.length);
+    
+    const text = await ai.transcribeAudio(base64Data, finalMimeType);
+    if (!text || !text.trim()) {
+      return res.status(500).json({ error: '未能识别出文字内容，请重新录音或检查音频质量' });
+    }
     return res.json({ text });
   } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: 'Transcribe failed' });
+    console.error('Transcribe audio error:', e);
+    const errorMsg = safeErrorMsg(e);
+    return res.status(500).json({ error: errorMsg });
   }
 });
 

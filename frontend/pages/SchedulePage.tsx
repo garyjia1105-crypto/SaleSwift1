@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Schedule, Customer } from '../types';
 import { 
@@ -15,7 +15,7 @@ import {
   Calendar,
   X
 } from 'lucide-react';
-import { parseScheduleVoice } from '../services/aiService';
+import { parseScheduleVoice, transcribeAudio } from '../services/aiService';
 import { translations, Language } from '../translations';
 
 interface Props {
@@ -32,24 +32,130 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
   const [isProcessing, setIsProcessing] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newSchedule, setNewSchedule] = useState({ title: '', date: '', time: '', customerId: '' });
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const sortedSchedules = [...schedules].sort((a, b) => 
     new Date(`${a.date} ${a.time || '00:00'}`).getTime() - new Date(`${b.date} ${b.time || '00:00'}`).getTime()
   );
 
-  const startVoiceInput = () => {
-    setRecording(true);
-    setTimeout(async () => {
-      setRecording(false);
-      setIsProcessing(true);
-      try {
-        const result = await parseScheduleVoice("Tomorrow visit Tencent manager Zhang");
-        if (result) {
-          const matchedCust = customers.find(c => c.name.includes(result.customerName) || c.company.includes(result.customerName));
-          onAddSchedule({ id: 'sched-'+Date.now(), ...result, customerId: matchedCust?.id, status: 'pending' });
+  const startVoiceInput = async () => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('您的浏览器不支持录音功能');
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
         }
-      } catch (err) { console.error(err); } finally { setIsProcessing(false); }
-    }, 1200);
+      });
+      
+      let mimeType = 'audio/webm';
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mimeType = 'audio/webm;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+        mimeType = 'audio/webm';
+      }
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        stream.getTracks().forEach(track => track.stop());
+        
+        if (audioBlob.size === 0) {
+          alert('录音数据为空，请重新录音');
+          setRecording(false);
+          return;
+        }
+        
+        setIsProcessing(true);
+        try {
+          const reader = new FileReader();
+          reader.readAsDataURL(audioBlob);
+          reader.onloadend = async () => {
+            try {
+              const result = reader.result as string;
+              const base64data = result.split(',')[1];
+              const detectedMimeType = result.match(/data:([^;]+)/)?.[1] || mimeType;
+              
+              // 先转录语音
+              const transcribedText = await transcribeAudio(base64data, detectedMimeType);
+              if (transcribedText && transcribedText.trim()) {
+                // 然后解析日程
+                const result = await parseScheduleVoice(transcribedText.trim());
+                if (result) {
+                  const matchedCust = customers.find(c => 
+                    result.customerName && (c.name.includes(result.customerName) || c.company.includes(result.customerName))
+                  );
+                  onAddSchedule({ 
+                    id: 'sched-'+Date.now(), 
+                    ...result, 
+                    customerId: matchedCust?.id || '', 
+                    status: 'pending' 
+                  });
+                } else {
+                  alert('未能解析日程信息，请重新录音');
+                }
+              } else {
+                alert('未能识别出文字内容，请重新录音');
+              }
+            } catch (err) {
+              console.error('语音处理失败:', err);
+              alert(`语音识别失败: ${(err as Error)?.message || '未知错误'}`);
+            } finally {
+              setIsProcessing(false);
+              setRecording(false);
+            }
+          };
+        } catch (err) {
+          console.error('录音处理失败:', err);
+          setIsProcessing(false);
+          setRecording(false);
+        }
+      };
+
+      mediaRecorder.onerror = (event) => {
+        console.error('MediaRecorder 错误:', event);
+        stream.getTracks().forEach(track => track.stop());
+        setRecording(false);
+        setIsProcessing(false);
+      };
+
+      mediaRecorder.start(250);
+      setRecording(true);
+    } catch (err) {
+      console.error('无法开启麦克风:', err);
+      const error = err as Error;
+      let errorMsg = error.message || '无法开启麦克风';
+      if (error.name === 'NotAllowedError') {
+        errorMsg = '麦克风权限被拒绝，请在浏览器设置中允许麦克风访问';
+      }
+      alert(`无法开启麦克风: ${errorMsg}`);
+      setRecording(false);
+    }
+  };
+
+  const stopVoiceInput = () => {
+    if (mediaRecorderRef.current && recording) {
+      if (mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.requestData();
+        mediaRecorderRef.current.stop();
+      }
+      setRecording(false);
+    }
   };
 
   return (
@@ -73,14 +179,14 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
           </div>
         </div>
         <button 
-          onClick={startVoiceInput} 
-          disabled={recording || isProcessing}
+          onClick={recording ? stopVoiceInput : startVoiceInput} 
+          disabled={isProcessing}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold btn-active-scale transition-all ${
             recording ? 'bg-red-500 text-white' : 'bg-blue-600 text-white'
           }`}
         >
-          {isProcessing ? <Loader2 className="animate-spin" size={12} /> : <Mic size={12} />}
-          {recording ? t.recording : t.start}
+          {isProcessing ? <Loader2 className="animate-spin" size={12} /> : recording ? <X size={12} /> : <Mic size={12} />}
+          {recording ? t.recording : isProcessing ? '处理中...' : t.start}
         </button>
       </div>
 

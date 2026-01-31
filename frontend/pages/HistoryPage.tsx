@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Interaction } from '../types';
 import { 
   Search, 
@@ -7,35 +7,126 @@ import {
   ArrowUpDown, 
   ChevronRight, 
   Mic, 
-  Loader2 
+  Loader2,
+  X
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { extractSearchKeywords } from '../services/aiService';
+import { extractSearchKeywords, transcribeAudio } from '../services/aiService';
 
 const HistoryPage: React.FC<{ interactions: Interaction[] }> = ({ interactions }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isVoiceProcessing, setIsVoiceProcessing] = useState(false);
   const [recording, setRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
-  const startVoiceSearch = () => {
-    setRecording(true);
-    // 模拟录音过程，实际可接入 MediaRecorder
-    setTimeout(async () => {
-      setRecording(false);
-      setIsVoiceProcessing(true);
-      try {
-        // 模拟捕获的语音内容
-        const mockSpeech = "帮我找找之前跟阿里巴巴张经理的沟通记录";
-        const keywords = await extractSearchKeywords(mockSpeech);
-        if (keywords) {
-          setSearchTerm(keywords);
-        }
-      } catch (err) {
-        console.error('语音搜索失败:', err);
-      } finally {
-        setIsVoiceProcessing(false);
+  const startVoiceSearch = async () => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('您的浏览器不支持录音功能');
+        return;
       }
-    }, 2000);
+
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+      
+      let mimeType = 'audio/webm';
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mimeType = 'audio/webm;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+        mimeType = 'audio/webm';
+      }
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        stream.getTracks().forEach(track => track.stop());
+        
+        if (audioBlob.size === 0) {
+          alert('录音数据为空，请重新录音');
+          setRecording(false);
+          return;
+        }
+        
+        setIsVoiceProcessing(true);
+        try {
+          const reader = new FileReader();
+          reader.readAsDataURL(audioBlob);
+          reader.onloadend = async () => {
+            try {
+              const result = reader.result as string;
+              const base64data = result.split(',')[1];
+              const detectedMimeType = result.match(/data:([^;]+)/)?.[1] || mimeType;
+              
+              const transcribedText = await transcribeAudio(base64data, detectedMimeType);
+              if (transcribedText && transcribedText.trim()) {
+                const keywords = await extractSearchKeywords(transcribedText.trim());
+                if (keywords) {
+                  setSearchTerm(keywords);
+                } else {
+                  setSearchTerm(transcribedText.trim());
+                }
+              } else {
+                alert('未能识别出文字内容，请重新录音');
+              }
+            } catch (err) {
+              console.error('语音处理失败:', err);
+              alert(`语音识别失败: ${(err as Error)?.message || '未知错误'}`);
+            } finally {
+              setIsVoiceProcessing(false);
+              setRecording(false);
+            }
+          };
+        } catch (err) {
+          console.error('录音处理失败:', err);
+          setIsVoiceProcessing(false);
+          setRecording(false);
+        }
+      };
+
+      mediaRecorder.onerror = (event) => {
+        console.error('MediaRecorder 错误:', event);
+        stream.getTracks().forEach(track => track.stop());
+        setRecording(false);
+        setIsVoiceProcessing(false);
+      };
+
+      mediaRecorder.start(250);
+      setRecording(true);
+    } catch (err) {
+      console.error('无法开启麦克风:', err);
+      const error = err as Error;
+      let errorMsg = error.message || '无法开启麦克风';
+      if (error.name === 'NotAllowedError') {
+        errorMsg = '麦克风权限被拒绝，请在浏览器设置中允许麦克风访问';
+      }
+      alert(`无法开启麦克风: ${errorMsg}`);
+      setRecording(false);
+    }
+  };
+
+  const stopVoiceSearch = () => {
+    if (mediaRecorderRef.current && recording) {
+      if (mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.requestData();
+        mediaRecorderRef.current.stop();
+      }
+      setRecording(false);
+    }
   };
 
   const filtered = interactions.filter(i => 
@@ -62,14 +153,14 @@ const HistoryPage: React.FC<{ interactions: Interaction[] }> = ({ interactions }
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           <button 
-            onClick={startVoiceSearch}
-            disabled={recording || isVoiceProcessing}
+            onClick={recording ? stopVoiceSearch : startVoiceSearch}
+            disabled={isVoiceProcessing}
             className={`absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl transition-all ${
               recording ? 'bg-red-500 text-white animate-pulse' : 'text-gray-400 hover:bg-blue-50 hover:text-blue-600'
             }`}
-            title="语音搜索"
+            title={recording ? "停止录音" : "语音搜索"}
           >
-            {isVoiceProcessing ? <Loader2 className="animate-spin" size={20} /> : <Mic size={20} />}
+            {isVoiceProcessing ? <Loader2 className="animate-spin" size={20} /> : recording ? <X size={20} /> : <Mic size={20} />}
           </button>
         </div>
         <div className="flex gap-2 w-full md:w-auto">

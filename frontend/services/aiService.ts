@@ -5,17 +5,31 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 async function aiRequest<T>(path: string, body: unknown): Promise<T> {
   const token = getToken();
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || res.statusText || 'AI request failed');
-  return data as T;
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || res.statusText || 'AI request failed');
+    return data as T;
+  } catch (err) {
+    // 过滤掉浏览器扩展相关的错误
+    const error = err as Error;
+    if (error.message?.includes('message channel closed') || 
+        error.message?.includes('listener indicated') ||
+        error.message?.includes('content.bundle.js')) {
+      // 这是浏览器扩展错误，忽略它，但重新抛出原始错误
+      console.warn('浏览器扩展错误已忽略:', error.message);
+      // 继续抛出，但使用更友好的消息
+      throw new Error('网络请求失败，请检查网络连接或稍后重试');
+    }
+    throw err;
+  }
 }
 
 export async function analyzeSalesInteraction(

@@ -46,12 +46,22 @@ const EVALUATION_SCHEMA = {
 
 const ROLE_PLAY_SYSTEM = (customer: { name: string; role: string; company: string }) => `
 你现在扮演客户：${customer.name}，职位是 ${customer.role}，在 ${customer.company} 工作。
-性格特征：资深、理性、时间观念极强。
-演练目标：用户（销售）需要说服你考虑他们的方案或达成下一步共识。
-行为准则：
-1. **拒绝敷衍**：如果用户回复过于简短（如少于10个字）或缺乏专业性，请表现出不悦或困惑。
-2. **真实反馈**：模拟真实的商业阻力。
-3. **引导深度对话**：通过追问来测试用户的需求挖掘能力。
+性格特征：资深、理性、时间观念极强、注重实际价值。
+
+重要规则：
+1. **根据销售的具体内容回复**：仔细阅读销售说的话，针对性地回应，不要使用模板化回复。
+2. **真实自然的对话**：像真实客户一样，根据销售提出的具体问题、方案或建议给出回应。
+3. **拒绝敷衍**：如果销售回复过于简短（少于10个字）或缺乏专业性，表现出不悦或困惑。
+4. **真实反馈**：模拟真实的商业阻力，提出合理的疑问和顾虑。
+5. **引导深度对话**：通过追问来测试销售的需求挖掘能力。
+
+禁止行为：
+- 不要重复相同的回复
+- 不要使用"visit tencent manager"这样的固定回复
+- 不要忽略销售的具体内容
+- 每次回复都要基于销售刚才说的话
+
+请根据销售的具体发言，给出自然、真实、有针对性的客户回复。
 `;
 
 export async function rolePlayInit(customer: {
@@ -79,12 +89,31 @@ export async function rolePlayMessage(
   const ai = getAI();
   const model = getModel('flash');
   const systemInstruction = ROLE_PLAY_SYSTEM(customer);
-  const conversation = history.map((h) => `${h.role === 'user' ? '销售' : '客户'}: ${h.text}`).join('\n');
-  const fullPrompt = conversation ? `${conversation}\n销售: ${message}\n\n请以客户身份回复：` : `销售: ${message}\n\n请以客户身份回复：`;
+  
+  // 构建对话历史，确保格式清晰
+  const conversationParts: string[] = [];
+  history.forEach((h) => {
+    const speaker = h.role === 'user' ? '销售' : '客户';
+    conversationParts.push(`${speaker}: ${h.text}`);
+  });
+  
+  // 添加当前销售的消息
+  conversationParts.push(`销售: ${message}`);
+  
+  const conversation = conversationParts.join('\n');
+  const fullPrompt = `${conversation}\n\n请作为客户 ${customer.name} 回复。注意：必须根据销售刚才说的具体内容（"${message}"）给出有针对性的回复，不要使用模板化或重复的回复。`;
+  
+  console.log('角色扮演提示词:', fullPrompt.substring(0, 200));
+  
   const response = await ai.models.generateContent({
     model,
     contents: fullPrompt,
-    config: { systemInstruction, temperature: 0.9 },
+    config: { 
+      systemInstruction, 
+      temperature: 0.95, // 提高温度以增加回复多样性
+      topP: 0.95,
+      topK: 40
+    },
   });
   return response.text?.trim() || '';
 }

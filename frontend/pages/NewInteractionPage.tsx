@@ -14,7 +14,7 @@ import {
   Trash2,
   ChevronRight
 } from 'lucide-react';
-import { analyzeSalesInteraction } from '../services/aiService';
+import { analyzeSalesInteraction, transcribeAudio } from '../services/aiService';
 import { Interaction, Customer } from '../types';
 import { translations, Language } from '../translations';
 
@@ -31,6 +31,7 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
   const [input, setInput] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [pendingResult, setPendingResult] = useState<Interaction | null>(null);
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -39,6 +40,8 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
   const [selectedFile, setSelectedFile] = useState<{ file: File, base64: string } | null>(null);
   const [analyzeError, setAnalyzeError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const navigate = useNavigate();
 
   const hasContent = input.trim().length > 0 || selectedFile !== null;
@@ -74,6 +77,123 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const startRecording = async () => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('您的浏览器不支持录音功能');
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+      
+      let mimeType = 'audio/webm';
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mimeType = 'audio/webm;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+        mimeType = 'audio/webm';
+      }
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        stream.getTracks().forEach(track => track.stop());
+        
+        if (audioBlob.size === 0) {
+          alert('录音数据为空，请确保录音时间足够长（至少2秒）');
+          setRecording(false);
+          return;
+        }
+        
+        setIsTranscribing(true);
+        try {
+          const reader = new FileReader();
+          reader.readAsDataURL(audioBlob);
+          reader.onloadend = async () => {
+            try {
+              const result = reader.result as string;
+              const base64data = result.split(',')[1];
+              const detectedMimeType = result.match(/data:([^;]+)/)?.[1] || mimeType;
+              
+              console.log('开始转录录音...');
+              const transcribedText = await transcribeAudio(base64data, detectedMimeType);
+              console.log('转录结果:', transcribedText);
+              
+              if (transcribedText && transcribedText.trim()) {
+                // 将转录的文本添加到输入框
+                setInput(prev => prev ? `${prev}\n${transcribedText.trim()}` : transcribedText.trim());
+                // 同时保存为音频文件，以便后续分析
+                setSelectedFile({ file: audioBlob as any, base64: base64data });
+              } else {
+                alert('未能识别出文字内容，请重新录音');
+              }
+            } catch (err) {
+              console.error('语音处理失败:', err);
+              const errorMsg = (err as Error)?.message || '语音识别失败';
+              if (errorMsg.includes('quota') || errorMsg.includes('配额') || errorMsg.includes('429')) {
+                alert('AI 配额已用完，请稍后再试或手动输入文字');
+              } else {
+                alert(`语音识别失败: ${errorMsg}`);
+              }
+            } finally {
+              setIsTranscribing(false);
+              setRecording(false);
+            }
+          };
+        } catch (err) {
+          console.error('录音处理失败:', err);
+          setIsTranscribing(false);
+          setRecording(false);
+        }
+      };
+
+      mediaRecorder.onerror = (event) => {
+        console.error('MediaRecorder 错误:', event);
+        stream.getTracks().forEach(track => track.stop());
+        setRecording(false);
+        setIsTranscribing(false);
+      };
+
+      mediaRecorder.start(250);
+      setRecording(true);
+    } catch (err) {
+      console.error('无法开启麦克风:', err);
+      const error = err as Error;
+      let errorMsg = error.message || '无法开启麦克风';
+      if (error.name === 'NotAllowedError') {
+        errorMsg = '麦克风权限被拒绝，请在浏览器设置中允许麦克风访问';
+      } else if (error.name === 'NotFoundError') {
+        errorMsg = '未找到麦克风设备，请检查设备连接';
+      }
+      alert(`无法开启麦克风: ${errorMsg}`);
+      setRecording(false);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && recording) {
+      if (mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.requestData();
+        mediaRecorderRef.current.stop();
+      }
+      setRecording(false);
+    }
+  };
+
   return (
     <div className="page-transition space-y-6 pb-12">
       <header className="text-center">
@@ -84,15 +204,18 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
       <div className="flex flex-col items-center gap-6">
         <div className="relative">
           <button 
-            onClick={() => setRecording(!recording)}
+            onClick={recording ? stopRecording : startRecording}
+            disabled={isTranscribing}
             className={`w-20 h-20 rounded-full flex flex-col items-center justify-center gap-1 transition-all soft-shadow btn-active-scale relative z-10 ${
-              recording ? 'bg-red-500 text-white' : 'bg-blue-600 text-white'
+              recording ? 'bg-red-500 text-white' : isTranscribing ? 'bg-gray-400 text-white' : 'bg-blue-600 text-white'
             }`}
           >
-            {recording ? <X size={24} /> : <Mic size={24} />}
-            <span className="text-[8px] font-bold uppercase tracking-widest">{recording ? t.stop : t.record}</span>
+            {isTranscribing ? <Loader2 className="animate-spin" size={24} /> : recording ? <X size={24} /> : <Mic size={24} />}
+            <span className="text-[8px] font-bold uppercase tracking-widest">
+              {isTranscribing ? '转写中...' : recording ? t.stop : t.record}
+            </span>
           </button>
-          {recording && <div className="absolute inset-0 rounded-full border-4 border-red-200 animate-ping opacity-30"></div>}
+          {recording && !isTranscribing && <div className="absolute inset-0 rounded-full border-4 border-red-200 animate-ping opacity-30"></div>}
         </div>
 
         <div className="w-full space-y-3">

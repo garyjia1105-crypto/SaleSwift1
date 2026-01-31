@@ -39,6 +39,7 @@ const RolePlayPage: React.FC<Props> = ({ customers, interactions }) => {
   // 语音相关状态
   const [recording, setRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [transcribeError, setTranscribeError] = useState<string>('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
@@ -80,70 +81,285 @@ const RolePlayPage: React.FC<Props> = ({ customers, interactions }) => {
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      // 检查浏览器支持
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('您的浏览器不支持录音功能，请使用 Chrome、Firefox 或 Safari');
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+      
+      // 检查支持的 MIME 类型
+      let mimeType = 'audio/webm';
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mimeType = 'audio/webm;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+        mimeType = 'audio/webm';
+      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        mimeType = 'audio/mp4';
+      } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
+        mimeType = 'audio/ogg';
+      }
+      
+      console.log('使用 MIME 类型:', mimeType);
+      
+      // 创建 MediaRecorder
+      let mediaRecorder: MediaRecorder;
+      try {
+        mediaRecorder = new MediaRecorder(stream, { mimeType });
+      } catch (e) {
+        // 如果指定类型失败，使用默认类型
+        console.warn('使用默认 MIME 类型');
+        mediaRecorder = new MediaRecorder(stream);
+      }
+      
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        if (event.data && event.data.size > 0) {
           audioChunksRef.current.push(event.data);
+          console.log('收集到音频数据块:', event.data.size, 'bytes');
         }
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        console.log('录音停止，总数据块数:', audioChunksRef.current.length);
+        
+        // 等待一小段时间确保所有数据都已收集
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        console.log('音频 Blob 大小:', audioBlob.size, 'bytes', '类型:', mimeType);
+        
+        if (audioBlob.size === 0) {
+          setTranscribeError('录音数据为空，请确保录音时间足够长（至少2秒）');
+          setIsTranscribing(false);
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+        
+        if (audioBlob.size < 1000) {
+          console.warn('音频文件很小，可能录音时间太短');
+        }
+        
         await handleAudioProcess(audioBlob);
         stream.getTracks().forEach(track => track.stop());
       };
 
-      mediaRecorder.start();
+      mediaRecorder.onerror = (event) => {
+        console.error('MediaRecorder 错误:', event);
+        const error = (event as any).error;
+        const errorMsg = error?.message || '录音过程中发生错误';
+        setTranscribeError(errorMsg);
+        setRecording(false);
+        setIsTranscribing(false);
+        stream.getTracks().forEach(track => track.stop());
+        alert(`录音错误: ${errorMsg}`);
+      };
+
+      // 使用 timeslice 参数（每250ms收集一次数据，更稳定）
+      mediaRecorder.start(250);
       setRecording(true);
+      console.log('开始录音，MIME类型:', mimeType);
     } catch (err) {
       console.error('无法开启麦克风:', err);
-      alert('无法开启麦克风，请检查权限。');
+      const error = err as Error;
+      let errorMsg = error.message || '无法开启麦克风';
+      
+      if (error.name === 'NotAllowedError' || errorMsg.includes('permission')) {
+        errorMsg = '麦克风权限被拒绝，请在浏览器设置中允许麦克风访问';
+      } else if (error.name === 'NotFoundError') {
+        errorMsg = '未找到麦克风设备，请检查设备连接';
+      } else if (error.name === 'NotSupportedError') {
+        errorMsg = '您的浏览器不支持录音功能';
+      }
+      
+      setTranscribeError(errorMsg);
+      setRecording(false);
+      alert(`无法开启麦克风\n\n${errorMsg}\n\n请检查浏览器权限设置。`);
     }
   };
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && recording) {
-      mediaRecorderRef.current.stop();
+      console.log('停止录音，当前状态:', mediaRecorderRef.current.state);
+      
+      try {
+        // 确保在停止前请求所有剩余数据
+        if (mediaRecorderRef.current.state === 'recording') {
+          mediaRecorderRef.current.requestData();
+          // 直接停止，不要延迟
+          mediaRecorderRef.current.stop();
+        } else if (mediaRecorderRef.current.state === 'paused') {
+          mediaRecorderRef.current.stop();
+        }
+      } catch (err) {
+        console.error('停止录音时出错:', err);
+        // 即使出错也设置状态
+        setRecording(false);
+        setIsTranscribing(false);
+      }
+      
       setRecording(false);
     }
   };
 
   const handleAudioProcess = async (blob: Blob) => {
     setIsTranscribing(true);
+    setTranscribeError('');
     try {
+      // 检查音频文件大小
+      console.log('处理音频，大小:', blob.size, 'bytes');
+      if (blob.size === 0) {
+        throw new Error('录音文件为空，请确保录音时间足够长（至少1秒）');
+      }
+      
+      if (blob.size < 1000) {
+        console.warn('音频文件很小，可能录音时间太短');
+      }
+      
       const reader = new FileReader();
       reader.readAsDataURL(blob);
+      
       reader.onloadend = async () => {
-        const base64data = (reader.result as string).split(',')[1];
-        const transcribedText = await transcribeAudio(base64data, 'audio/webm');
-        if (transcribedText) {
-          await sendMessage(transcribedText);
+        try {
+          const result = reader.result as string;
+          if (!result) {
+            throw new Error('无法读取录音文件');
+          }
+          const base64data = result.split(',')[1];
+          if (!base64data) {
+            throw new Error('录音数据格式错误');
+          }
+          
+          // 检测实际的 MIME 类型
+          const detectedMimeType = result.match(/data:([^;]+)/)?.[1] || 'audio/webm';
+          console.log('发送转录请求，数据长度:', base64data.length, 'MIME类型:', detectedMimeType);
+          
+          console.log('开始调用转录API...');
+          const transcribedText = await transcribeAudio(base64data, detectedMimeType);
+          console.log('转录结果:', transcribedText, '长度:', transcribedText?.length);
+          
+          // 确保转录状态已清除
+          setIsTranscribing(false);
+          
+          if (transcribedText && transcribedText.trim()) {
+            console.log('转录成功，准备发送消息:', transcribedText.trim());
+            setTranscribeError(''); // 清除之前的错误
+            
+            // 使用 setTimeout 确保状态已更新
+            setTimeout(async () => {
+              try {
+                await sendMessage(transcribedText.trim());
+                console.log('消息已发送');
+              } catch (err) {
+                console.error('发送消息失败:', err);
+                setTranscribeError((err as Error)?.message || '发送消息失败');
+              }
+            }, 50);
+          } else {
+            console.warn('转录结果为空');
+            throw new Error('未能识别出文字内容，请重新录音或检查网络连接');
+          }
+        } catch (err) {
+          let errorMsg = (err as Error)?.message || '语音转文字失败';
+          
+          // 检查是否是配额问题
+          if (errorMsg.includes('quota') || errorMsg.includes('配额') || errorMsg.includes('429') || 
+              errorMsg.includes('AI quota exceeded') || errorMsg.includes('resource_exhausted')) {
+            errorMsg = 'AI 配额已用完，请稍后再试或升级 API 计划。您也可以手动输入文字。';
+          } else if (errorMsg.includes('API key') || errorMsg.includes('apiKey')) {
+            errorMsg = 'API 密钥配置错误，请联系管理员。';
+          } else if (errorMsg.includes('network') || errorMsg.includes('fetch') || errorMsg.includes('ENOTFOUND')) {
+            errorMsg = '网络连接失败，请检查网络后重试。';
+          }
+          
+          setTranscribeError(errorMsg);
+          console.error('音频处理失败:', err);
+          setIsTranscribing(false);
+          // 显示错误提示
+          setTimeout(() => {
+            alert(`语音转文字失败\n\n${errorMsg}\n\n提示：如果配额已用完，您可以手动输入文字继续对话。`);
+          }, 100);
         }
       };
+      
+      reader.onerror = () => {
+        const errorMsg = '读取录音文件失败';
+        setTranscribeError(errorMsg);
+        setIsTranscribing(false);
+        console.error('FileReader 错误');
+        alert(`语音转文字失败: ${errorMsg}`);
+      };
     } catch (err) {
+      const errorMsg = (err as Error)?.message || '音频处理失败';
+      setTranscribeError(errorMsg);
       console.error('音频处理失败:', err);
-    } finally {
       setIsTranscribing(false);
+      alert(`语音转文字失败: ${errorMsg}`);
     }
   };
 
   const sendMessage = async (text: string) => {
-    if (!text.trim() || !customer || isTyping || evaluation) return;
+    console.log('sendMessage 调用，参数:', { text: text?.substring(0, 50), customer: !!customer, isTyping, evaluation: !!evaluation });
+    
+    if (!text || !text.trim()) {
+      console.warn('sendMessage: 文本为空');
+      return;
+    }
+    
+    if (!customer) {
+      console.warn('sendMessage: 客户信息不存在');
+      setTranscribeError('客户信息不存在');
+      return;
+    }
+    
+    if (isTyping) {
+      console.warn('sendMessage: 正在输入中，跳过');
+      return;
+    }
+    
+    if (evaluation) {
+      console.warn('sendMessage: 正在评估，跳过');
+      return;
+    }
 
-    const newUserMsg = { role: 'user' as const, text };
+    const newUserMsg = { role: 'user' as const, text: text.trim() };
+    console.log('添加用户消息到界面:', newUserMsg);
     setMessages((prev) => [...prev, newUserMsg]);
     setIsTyping(true);
 
     try {
       const historyWithUser = [...messages, newUserMsg];
-      const reply = await rolePlayMessage(customer, customerContext, historyWithUser, text);
-      setMessages((prev) => [...prev, { role: 'model', text: reply || '' }]);
+      console.log('调用 rolePlayMessage，历史记录数:', historyWithUser.length);
+      const reply = await rolePlayMessage(customer, customerContext, historyWithUser, text.trim());
+      console.log('收到回复:', reply?.substring(0, 50));
+      
+      if (reply && reply.trim()) {
+        setMessages((prev) => [...prev, { role: 'model', text: reply.trim() }]);
+        console.log('AI 回复已添加到界面');
+      } else {
+        console.warn('AI 回复为空');
+        setMessages((prev) => [...prev, { role: 'model', text: '抱歉，我没有收到回复。' }]);
+      }
     } catch (err) {
-      console.error(err);
+      console.error('sendMessage 错误:', err);
+      const errorMsg = (err as Error)?.message || '发送消息失败';
+      setTranscribeError(errorMsg);
+      // 即使出错也显示用户消息
+      setMessages((prev) => {
+        if (prev[prev.length - 1]?.role === 'user' && prev[prev.length - 1]?.text === text.trim()) {
+          // 用户消息已存在，只添加错误提示
+          return [...prev, { role: 'model', text: `错误: ${errorMsg}` }];
+        }
+        return prev;
+      });
     } finally {
       setIsTyping(false);
     }
@@ -254,14 +470,21 @@ const RolePlayPage: React.FC<Props> = ({ customers, interactions }) => {
               <div className="flex-1 relative">
                 <input 
                   type="text" 
-                  placeholder={recording ? "正在录音..." : "请输入您的专业回复（建议多字说明）..."}
+                  placeholder={recording ? "正在录音..." : isTranscribing ? "正在转写语音..." : "请输入您的专业回复（建议多字说明）..."}
                   className={`w-full px-6 py-4 bg-white border rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-700 shadow-sm transition-all ${
-                    recording ? 'border-red-200 bg-red-50 placeholder:text-red-300' : 'border-gray-200'
+                    recording ? 'border-red-200 bg-red-50 placeholder:text-red-300' : 
+                    transcribeError ? 'border-red-300 bg-red-50' : 
+                    'border-gray-200'
                   }`}
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   disabled={isTyping || isEvaluating || isTranscribing}
                 />
+                {transcribeError && (
+                  <div className="absolute -bottom-6 left-0 text-xs text-red-500 mt-1">
+                    {transcribeError}
+                  </div>
+                )}
               </div>
               <button 
                 type="submit"
@@ -275,6 +498,23 @@ const RolePlayPage: React.FC<Props> = ({ customers, interactions }) => {
               <p className="text-center text-[10px] text-red-500 font-bold mt-2 animate-bounce">
                 录音中... AI 客户更喜欢详细周全的表达
               </p>
+            )}
+            {transcribeError && (
+              <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <p className="text-xs text-amber-800 font-medium">
+                  {transcribeError.includes('配额') || transcribeError.includes('quota') ? (
+                    <>
+                      <span className="font-bold">⚠️ AI 配额已用完</span>
+                      <br />
+                      <span className="text-[10px] mt-1 block">
+                        请稍后再试，或手动输入文字继续对话。
+                      </span>
+                    </>
+                  ) : (
+                    transcribeError
+                  )}
+                </p>
+              </div>
             )}
           </div>
         ) : (
