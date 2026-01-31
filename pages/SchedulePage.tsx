@@ -1,0 +1,141 @@
+
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Schedule, Customer } from '../types';
+import { 
+  CalendarDays, 
+  Plus, 
+  Mic, 
+  Loader2, 
+  CheckCircle2, 
+  Circle, 
+  Clock, 
+  User, 
+  Sparkles,
+  Calendar,
+  X
+} from 'lucide-react';
+import { parseScheduleVoice } from '../services/geminiService';
+import { translations, Language } from '../translations';
+
+interface Props {
+  schedules: Schedule[];
+  customers: Customer[];
+  onAddSchedule: (s: Schedule) => void;
+  onToggleStatus: (id: string) => void;
+  lang: Language;
+}
+
+const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, onToggleStatus, lang }) => {
+  const t = translations[lang].schedule;
+  const [recording, setRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newSchedule, setNewSchedule] = useState({ title: '', date: '', time: '', customerId: '' });
+
+  const sortedSchedules = [...schedules].sort((a, b) => 
+    new Date(`${a.date} ${a.time || '00:00'}`).getTime() - new Date(`${b.date} ${b.time || '00:00'}`).getTime()
+  );
+
+  const startVoiceInput = () => {
+    setRecording(true);
+    setTimeout(async () => {
+      setRecording(false);
+      setIsProcessing(true);
+      try {
+        const result = await parseScheduleVoice("Tomorrow visit Tencent manager Zhang");
+        if (result) {
+          const matchedCust = customers.find(c => c.name.includes(result.customerName) || c.company.includes(result.customerName));
+          onAddSchedule({ id: 'sched-'+Date.now(), ...result, customerId: matchedCust?.id, status: 'pending' });
+        }
+      } catch (err) { console.error(err); } finally { setIsProcessing(false); }
+    }, 1200);
+  };
+
+  return (
+    <div className="page-transition space-y-5">
+      <header className="flex justify-between items-center">
+        <div>
+          <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
+          <p className="text-[9px] text-gray-400 font-medium mt-1">{t.subtitle}</p>
+        </div>
+        <button onClick={() => setShowAddForm(true)} className="p-1.5 bg-blue-600 text-white rounded-lg btn-active-scale soft-shadow">
+          <Plus size={14} />
+        </button>
+      </header>
+
+      <div className="bg-white p-3 rounded-2xl border border-gray-100 soft-shadow flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-blue-50 text-blue-500 rounded-xl shrink-0"><Sparkles size={14} /></div>
+          <div>
+            <h4 className="font-bold text-gray-900 text-[10px] leading-tight">{t.voice_title}</h4>
+            <p className="text-[8px] text-gray-400">{t.voice_desc}</p>
+          </div>
+        </div>
+        <button 
+          onClick={startVoiceInput} 
+          disabled={recording || isProcessing}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold btn-active-scale transition-all ${
+            recording ? 'bg-red-500 text-white' : 'bg-blue-600 text-white'
+          }`}
+        >
+          {isProcessing ? <Loader2 className="animate-spin" size={12} /> : <Mic size={12} />}
+          {recording ? t.recording : t.start}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2.5">
+        <div className="p-2.5 bg-emerald-50 rounded-xl flex items-center justify-between">
+          <div className="flex flex-col"><span className="text-[7px] text-emerald-600 font-bold uppercase tracking-widest">{t.completed}</span><span className="text-sm font-bold text-emerald-700 leading-none">{schedules.filter(s=>s.status==='completed').length}</span></div>
+          <CheckCircle2 size={14} className="text-emerald-200" />
+        </div>
+        <div className="p-2.5 bg-blue-50 rounded-xl flex items-center justify-between">
+          <div className="flex flex-col"><span className="text-[7px] text-blue-600 font-bold uppercase tracking-widest">{t.pending}</span><span className="text-sm font-bold text-blue-700 leading-none">{schedules.filter(s=>s.status==='pending').length}</span></div>
+          <Clock size={14} className="text-blue-200" />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {sortedSchedules.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-100">
+            <CalendarDays size={20} className="mx-auto text-gray-200 mb-1" />
+            <p className="text-[8px] text-gray-300 font-bold uppercase tracking-widest">{t.empty}</p>
+          </div>
+        ) : (
+          sortedSchedules.map(item => (
+            <div key={item.id} className={`flex items-center gap-3 p-3 bg-white rounded-xl border transition-all ${item.status==='completed' ? 'opacity-50 border-gray-50' : 'border-gray-100 soft-shadow'}`}>
+              <button onClick={() => onToggleStatus(item.id)} className={`shrink-0 transition-colors ${item.status==='completed'?'text-emerald-500':'text-gray-200'}`}>
+                {item.status==='completed' ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+              </button>
+              <div className="flex-1 overflow-hidden">
+                <h4 className={`text-xs font-bold truncate ${item.status==='completed'?'line-through text-gray-400':'text-gray-900'}`}>{item.title}</h4>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="flex items-center gap-0.5 text-[8px] text-gray-400 font-medium"><Calendar size={8} /> {item.date}</span>
+                  {item.customerId && <Link to={`/customers/${item.customerId}`} className="flex items-center gap-0.5 text-[8px] text-blue-600 font-bold truncate"><User size={8} /> {customers.find(c=>c.id===item.customerId)?.name}</Link>}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {showAddForm && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-end">
+          <div className="bg-white rounded-t-3xl w-full p-6 pb-8 animate-in slide-in-from-bottom duration-300">
+            <div className="flex justify-between items-center mb-4"><h3 className="text-xs font-bold">{t.manual}</h3><button onClick={() => setShowAddForm(false)} className="text-gray-400 p-1"><X size={16}/></button></div>
+            <form onSubmit={(e)=>{e.preventDefault(); onAddSchedule({id:'s-'+Date.now(), ...newSchedule, status:'pending'}); setShowAddForm(false);}} className="space-y-3">
+              <input required placeholder={t.placeholder_title} className="w-full px-3 py-2.5 bg-gray-50 rounded-lg text-xs outline-none" value={newSchedule.title} onChange={e=>setNewSchedule({...newSchedule, title: e.target.value})} />
+              <div className="grid grid-cols-2 gap-2">
+                <input type="date" required className="px-3 py-2.5 bg-gray-50 rounded-lg text-xs outline-none" value={newSchedule.date} onChange={e=>setNewSchedule({...newSchedule, date: e.target.value})} />
+                <input type="time" className="px-3 py-2.5 bg-gray-50 rounded-lg text-xs outline-none" value={newSchedule.time} onChange={e=>setNewSchedule({...newSchedule, time: e.target.value})} />
+              </div>
+              <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-xs btn-active-scale mt-2">{t.confirm}</button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default SchedulePage;
