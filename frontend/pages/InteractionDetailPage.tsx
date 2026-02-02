@@ -258,7 +258,7 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
         </div>
       </div>
 
-      <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] gap-4 md:gap-6">
+      <div className="flex flex-col xl:grid xl:grid-cols-[minmax(400px,2fr)_minmax(320px,1fr)] gap-4 md:gap-6">
         <div className="min-w-0 space-y-4 md:space-y-6">
           
           {/* Executive Summary */}
