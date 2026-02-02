@@ -272,7 +272,16 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
         </div>
 
         {analyzeError && (
-          <p className="text-[10px] text-rose-600 font-medium px-2">{analyzeError}</p>
+          <div className="space-y-1 px-2">
+            <p className="text-[10px] font-medium text-rose-600">
+              {analyzeError.includes('AI quota exceeded') || analyzeError.includes('Try again later')
+                ? '当前请求过多，请稍后再试'
+                : analyzeError}
+            </p>
+            {(analyzeError.includes('AI quota exceeded') || analyzeError.includes('Try again later')) && (
+              <p className="text-[9px] text-gray-500">点击下方按钮重试</p>
+            )}
+          </div>
         )}
         <button
           onClick={handleAnalyze}
@@ -281,7 +290,13 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
             hasContent ? 'bg-blue-600 text-white shadow-xl shadow-blue-100' : 'bg-gray-100 text-gray-300'
           }`}
         >
-          {isAnalyzing ? <><Loader2 className="animate-spin" size={14} /> {t.analyzing}</> : <><Sparkles size={14} /> {t.analyze}</>}
+          {isAnalyzing ? (
+            <><Loader2 className="animate-spin" size={14} /> {t.analyzing}</>
+          ) : analyzeError && (analyzeError.includes('AI quota exceeded') || analyzeError.includes('Try again later')) ? (
+            <><Sparkles size={14} /> 重试</>
+          ) : (
+            <><Sparkles size={14} /> {t.analyze}</>
+          )}
         </button>
       </div>
 

@@ -21,7 +21,15 @@ import { aiRouter } from './routes/ai.js';
 const app = express();
 const PORT = process.env.PORT ?? 4000;
 
-app.use(cors({ origin: true, credentials: true }));
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    optionsSuccessStatus: 204,
+  })
+);
 app.use(express.json({ limit: '10mb' }));
 
 // REST API 统一前缀与入口

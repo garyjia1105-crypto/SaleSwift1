@@ -5,14 +5,27 @@ import * as ai from '../ai/gemini.js';
 export const aiRouter = Router();
 aiRouter.use(authMiddleware);
 
+const QUOTA_MSG = 'AI quota exceeded. Try again later.';
+
+function isQuotaError(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return /429|quota|resource_exhausted/i.test(msg);
+}
+
 function safeErrorMsg(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
   if (msg.includes('API_KEY') || msg.includes('apiKey') || msg.includes('apikey')) return 'API key not configured or invalid';
   if (msg.includes('ENOTFOUND') || msg.includes('ETIMEDOUT') || msg.includes('fetch')) return 'Unable to reach AI service. Check your network.';
-  if (msg.includes('429') || msg.includes('quota') || msg.includes('resource_exhausted')) return 'AI quota exceeded. Try again later.';
+  if (msg.includes('429') || msg.includes('quota') || msg.includes('resource_exhausted')) return QUOTA_MSG;
   if (msg.includes('404') || msg.includes('model')) return 'AI model unavailable. Please update configuration.';
   if (msg.length > 120) return 'AI service error. Check backend logs.';
   return msg || 'AI analysis failed';
+}
+
+function handleAiError(res: import('express').Response, e: unknown, logLabel: string): import('express').Response {
+  console.error(logLabel, e);
+  if (isQuotaError(e)) return res.status(429).json({ error: QUOTA_MSG });
+  return res.status(500).json({ error: safeErrorMsg(e) });
 }
 
 aiRouter.post('/analyze-sales-interaction', async (req, res) => {
@@ -21,8 +34,7 @@ aiRouter.post('/analyze-sales-interaction', async (req, res) => {
     const result = await ai.analyzeSalesInteraction(input, audioData);
     return res.json(result);
   } catch (e) {
-    console.error('analyze-sales-interaction:', e);
-    return res.status(500).json({ error: safeErrorMsg(e) });
+    return handleAiError(res, e, 'analyze-sales-interaction:');
   }
 });
 
@@ -35,8 +47,7 @@ aiRouter.post('/role-play-init', async (req, res) => {
     const text = await ai.rolePlayInit(customer, context || '');
     return res.json({ text });
   } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: 'Role play init failed' });
+    return handleAiError(res, e, 'role-play-init:');
   }
 });
 
@@ -49,8 +60,7 @@ aiRouter.post('/role-play-message', async (req, res) => {
     const text = await ai.rolePlayMessage(customer, context || '', Array.isArray(history) ? history : [], message);
     return res.json({ text });
   } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: 'Role play message failed' });
+    return handleAiError(res, e, 'role-play-message:');
   }
 });
 
@@ -63,8 +73,7 @@ aiRouter.post('/evaluate-role-play', async (req, res) => {
     const result = await ai.evaluateRolePlay(history);
     return res.json(result);
   } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: 'Evaluate role play failed' });
+    return handleAiError(res, e, 'evaluate-role-play:');
   }
 });
 
@@ -92,9 +101,7 @@ aiRouter.post('/transcribe-audio', async (req, res) => {
     }
     return res.json({ text });
   } catch (e) {
-    console.error('Transcribe audio error:', e);
-    const errorMsg = safeErrorMsg(e);
-    return res.status(500).json({ error: errorMsg });
+    return handleAiError(res, e, 'transcribe-audio:');
   }
 });
 
@@ -107,8 +114,7 @@ aiRouter.post('/deep-dive-interest', async (req, res) => {
     const text = await ai.deepDiveIntoInterest(interest, customer);
     return res.json({ text });
   } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: 'Deep dive failed' });
+    return handleAiError(res, e, 'deep-dive-interest:');
   }
 });
 
@@ -121,8 +127,7 @@ aiRouter.post('/continue-deep-dive', async (req, res) => {
     const text = await ai.continueDeepDiveIntoInterest(interest, customer, history, question);
     return res.json({ text });
   } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: 'Continue deep dive failed' });
+    return handleAiError(res, e, 'continue-deep-dive:');
   }
 });
 
@@ -139,8 +144,7 @@ aiRouter.post('/ask-about-interaction', async (req, res) => {
     );
     return res.json({ text });
   } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: 'Ask about interaction failed' });
+    return handleAiError(res, e, 'ask-about-interaction:');
   }
 });
 
@@ -153,8 +157,7 @@ aiRouter.post('/generate-course-plan', async (req, res) => {
     const result = await ai.generateCoursePlan(customer, context || '');
     return res.json(result);
   } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: 'Generate course plan failed' });
+    return handleAiError(res, e, 'generate-course-plan:');
   }
 });
 
@@ -167,8 +170,7 @@ aiRouter.post('/parse-schedule-voice', async (req, res) => {
     const result = await ai.parseScheduleVoice(text);
     return res.json(result);
   } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: 'Parse schedule voice failed' });
+    return handleAiError(res, e, 'parse-schedule-voice:');
   }
 });
 
@@ -181,8 +183,7 @@ aiRouter.post('/parse-customer-voice', async (req, res) => {
     const result = await ai.parseCustomerVoiceInput(text);
     return res.json(result);
   } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: 'Parse customer voice failed' });
+    return handleAiError(res, e, 'parse-customer-voice:');
   }
 });
 
@@ -195,7 +196,6 @@ aiRouter.post('/extract-search-keywords', async (req, res) => {
     const keywords = await ai.extractSearchKeywords(text);
     return res.json({ keywords });
   } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: 'Extract keywords failed' });
+    return handleAiError(res, e, 'extract-search-keywords:');
   }
 });

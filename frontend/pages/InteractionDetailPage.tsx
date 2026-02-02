@@ -258,8 +258,8 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
         </div>
       </div>
 
-      <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4 md:gap-6">
-        <div className="lg:col-span-2 space-y-4 md:space-y-6">
+      <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] gap-4 md:gap-6">
+        <div className="min-w-0 space-y-4 md:space-y-6">
           
           {/* Executive Summary */}
           <DetailSection title={t.summary} icon={<FileText />}>
@@ -318,7 +318,7 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
           </DetailSection>
         </div>
 
-        <div className="space-y-4 md:space-y-6">
+        <div className="min-w-0 space-y-4 md:space-y-6">
           {/* Next Steps */}
           <DetailSection title={t.next_steps} icon={<Calendar />} variant="secondary">
             <div className="space-y-3">
@@ -326,12 +326,12 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
                 const alreadyScheduled = isScheduled(step.action);
                 return (
                   <div key={i} className={`p-3.5 border rounded-2xl flex items-center justify-between gap-3 transition-all ${alreadyScheduled ? 'bg-gray-50/50 border-gray-100 opacity-60' : 'bg-white border-indigo-50 shadow-sm hover:border-indigo-200'}`}>
-                    <div className="overflow-hidden">
-                      <div className="flex items-center gap-2 mb-1">
-                         <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                    <div className="min-w-0 flex-1 overflow-hidden">
+                      <div className="flex items-start gap-2 mb-1">
+                         <div className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${
                             step.priority === '高' ? 'bg-rose-500' : step.priority === '中' ? 'bg-amber-500' : 'bg-blue-500'
                           }`}></div>
-                         <p className={`text-[11px] font-black truncate ${alreadyScheduled ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{step.action}</p>
+                         <p className={`text-[11px] font-black break-words ${alreadyScheduled ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{step.action}</p>
                       </div>
                       {step.dueDate && <div className="flex items-center gap-1 text-[9px] text-gray-400 font-bold ml-3.5 uppercase"><Clock size={10} /> {step.dueDate}</div>}
                     </div>
