@@ -1,14 +1,26 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI || '';
-if (!MONGODB_URI) {
-  console.error('MONGODB_URI is not set in .env');
+const MONGODB_URI = (process.env.MONGODB_URI || '').trim();
+
+function assertValidMongoUri(uri: string): void {
+  if (!uri) {
+    throw new Error(
+      'MONGODB_URI is not set. Set it in .env (local) or in your deployment environment (e.g. Railway Variables) to a MongoDB connection string (mongodb://... or mongodb+srv://...).'
+    );
+  }
+  const ok = uri.startsWith('mongodb://') || uri.startsWith('mongodb+srv://');
+  if (!ok) {
+    throw new Error(
+      `MONGODB_URI must start with "mongodb://" or "mongodb+srv://". Got: ${uri.slice(0, 20)}...`
+    );
+  }
 }
 
 let connected = false;
 
 export async function connectDB(): Promise<void> {
   if (connected) return;
+  assertValidMongoUri(MONGODB_URI);
   try {
     await mongoose.connect(MONGODB_URI);
     connected = true;

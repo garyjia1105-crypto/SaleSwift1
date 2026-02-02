@@ -1,4 +1,13 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const rawApiBase = (import.meta.env.VITE_API_URL || 'http://localhost:4000').trim();
+
+/** 保证是带协议的绝对地址，避免部署时 VITE_API_URL 缺协议导致 "Invalid URL" */
+function normalizeApiBase(base: string): string {
+  if (!base) return 'http://localhost:4000';
+  if (base.startsWith('http://') || base.startsWith('https://')) return base.replace(/\/+$/, '');
+  return `https://${base.replace(/^\/+/, '')}`;
+}
+
+const API_BASE = normalizeApiBase(rawApiBase);
 
 function getToken(): string | null {
   return localStorage.getItem('token');
@@ -14,7 +23,8 @@ async function request<T>(
   options: RequestInit & { params?: Record<string, string> } = {}
 ): Promise<T> {
   const { params, ...init } = options;
-  const url = new URL(path.startsWith('http') ? path : `${API_BASE}${path}`);
+  const url =
+    path.startsWith('http') ? new URL(path) : new URL(path.startsWith('/') ? path : `/${path}`, `${API_BASE}/`);
   if (params) Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   const token = getToken();
   const headers: HeadersInit = {
