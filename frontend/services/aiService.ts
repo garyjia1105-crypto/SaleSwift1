@@ -6,14 +6,15 @@ import { api } from './api';
 
 export async function analyzeSalesInteraction(
   input: string,
-  audioData?: { data: string; mimeType: string }
+  audioData?: { data: string; mimeType: string },
+  locale?: string
 ): Promise<{
   customerProfile: Interaction['customerProfile'];
   intelligence: Interaction['intelligence'];
   metrics: Interaction['metrics'];
   suggestions: string[];
 }> {
-  return api.ai.analyzeSalesInteraction({ input, audioData });
+  return api.ai.analyzeSalesInteraction({ input, audioData, locale });
 }
 
 export async function rolePlayInit(customer: Customer, context: string): Promise<string> {

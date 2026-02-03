@@ -258,10 +258,8 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
         </div>
       </div>
 
-      <div className="flex flex-col xl:grid xl:grid-cols-[minmax(400px,2fr)_minmax(320px,1fr)] gap-4 md:gap-6">
-        <div className="min-w-0 space-y-4 md:space-y-6">
-          
-          {/* Executive Summary */}
+      <div className="flex flex-col gap-4 md:gap-6">
+        {/* Executive Summary */}
           <DetailSection title={t.summary} icon={<FileText />}>
             <p className="text-gray-700 leading-relaxed text-xs md:text-sm font-medium border-l-4 border-blue-100 pl-4 italic">
               "{item.customerProfile.summary}"
@@ -316,10 +314,8 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
               </div>
             </div>
           </DetailSection>
-        </div>
 
-        <div className="min-w-0 space-y-4 md:space-y-6">
-          {/* Next Steps */}
+        {/* Next Steps */}
           <DetailSection title={t.next_steps} icon={<Calendar />} variant="secondary">
             <div className="space-y-3">
               {item.intelligence.nextSteps.map((step, i) => {
@@ -373,7 +369,6 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
               </div>
             </div>
           </DetailSection>
-        </div>
       </div>
 
       {/* --- PAGE BOTTOM AI ASSISTANT --- */}

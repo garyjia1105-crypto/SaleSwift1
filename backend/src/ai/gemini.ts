@@ -239,19 +239,28 @@ export async function evaluateRolePlay(history: { role: string; text: string }[]
   return JSON.parse(response.text || '{}');
 }
 
+const LOCALE_TO_LANG: Record<string, string> = {
+  zh: '简体中文',
+  en: 'English',
+  ja: '日本語',
+  ko: '한국어',
+};
+
 export async function analyzeSalesInteraction(
   input: string,
-  audioData?: { data: string; mimeType: string }
+  audioData?: { data: string; mimeType: string },
+  locale?: string
 ): Promise<Record<string, unknown>> {
   const ai = getAI();
   const model = getModel('flash');
+  const outputLang = locale && LOCALE_TO_LANG[locale] ? LOCALE_TO_LANG[locale] : '简体中文';
   const parts: { text?: string; inlineData?: { data: string; mimeType: string } }[] = [{ text: input || '分析此次互动' }];
   if (audioData) parts.push({ inlineData: audioData });
   const response = await ai.models.generateContent({
     model,
     contents: { parts },
     config: {
-      systemInstruction: '你是一位销售分析师。将语音或文本转化为结构化销售报告。务必提供详细的摘要和具体的下一步行动建议。',
+      systemInstruction: `你是一位销售分析师。将语音或文本转化为结构化销售报告。务必提供详细的摘要和具体的下一步行动建议。**重要：所有输出内容（摘要、建议、痛点、兴趣点、当前阶段、下一步行动、情绪基调等）必须全部使用${outputLang}。**`,
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.OBJECT,

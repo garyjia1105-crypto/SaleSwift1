@@ -250,7 +250,7 @@ export const api = {
   },
   /** REST API：AI 能力（分析、情景演练、语音转写、课程计划等） */
   ai: {
-    analyzeSalesInteraction: (body: { input: string; audioData?: { data: string; mimeType: string } }) =>
+    analyzeSalesInteraction: (body: { input: string; audioData?: { data: string; mimeType: string }; locale?: string }) =>
       request<{ customerProfile: unknown; intelligence: unknown; metrics: unknown; suggestions: string[] }>(
         '/api/ai/analyze-sales-interaction',
         { method: 'POST', body: JSON.stringify(body) }

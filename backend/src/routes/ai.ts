@@ -30,8 +30,8 @@ function handleAiError(res: import('express').Response, e: unknown, logLabel: st
 
 aiRouter.post('/analyze-sales-interaction', async (req, res) => {
   try {
-    const { input, audioData } = req.body;
-    const result = await ai.analyzeSalesInteraction(input, audioData);
+    const { input, audioData, locale } = req.body;
+    const result = await ai.analyzeSalesInteraction(input, audioData, locale);
     return res.json(result);
   } catch (e) {
     return handleAiError(res, e, 'analyze-sales-interaction:');

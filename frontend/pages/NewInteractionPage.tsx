@@ -39,6 +39,7 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
   const [newCustomerData, setNewCustomerData] = useState({ name: '', company: '' });
   const [selectedFile, setSelectedFile] = useState<{ file: File, base64: string } | null>(null);
   const [analyzeError, setAnalyzeError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -52,10 +53,13 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
     setAnalyzeError('');
     try {
       const audioPayload = selectedFile ? { data: selectedFile.base64, mimeType: selectedFile.file.type } : undefined;
-      const aiResult = await analyzeSalesInteraction(input, audioPayload);
+      const aiResult = await analyzeSalesInteraction(input, audioPayload, lang);
       if (aiResult) {
         const result: Interaction = { ...aiResult, id: 'int-' + Date.now(), date: new Date().toISOString(), rawInput: input || "Voice Input" };
-        if (selectedCustomerId) { await finalizeSave(result, selectedCustomerId); return; }
+        if (selectedCustomerId) {
+          await finalizeSave(result, selectedCustomerId);
+          return;
+        }
         setPendingResult(result);
         setNewCustomerData({ name: aiResult.customerProfile.name || '', company: aiResult.customerProfile.company || '' });
         setShowLinkModal(true);
@@ -68,8 +72,18 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
   };
 
   const finalizeSave = async (result: Interaction, customerId: string) => {
-    const saved = await onSave({ ...result, customerId });
-    if (saved) navigate(`/interaction/${saved.id}`);
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      const saved = await onSave({ ...result, customerId });
+      if (saved) {
+        setShowLinkModal(false);
+        setPendingResult(null);
+        navigate(`/interaction/${saved.id}`);
+      }
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const removeFile = () => {
@@ -346,23 +360,23 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
                 <h3 className="text-sm font-bold">Link Customer Profile</h3>
                 <div className="space-y-2 max-h-40 overflow-y-auto no-scrollbar">
                   {customers.slice(0, 3).map(c => (
-                    <button key={c.id} onClick={() => void finalizeSave(pendingResult!, c.id)} className="w-full p-3 bg-gray-50 rounded-xl flex justify-between items-center text-left active:bg-blue-50">
+                    <button key={c.id} type="button" disabled={isSaving} onClick={() => void finalizeSave(pendingResult!, c.id)} className="w-full p-3 bg-gray-50 rounded-xl flex justify-between items-center text-left active:bg-blue-50 disabled:opacity-50 disabled:pointer-events-none">
                       <div><p className="font-bold text-xs">{c.name}</p><p className="text-[9px] text-gray-400">{c.company}</p></div>
-                      <CheckCircle2 className="text-gray-200" size={14} />
+                      {isSaving ? <Loader2 className="animate-spin text-blue-600" size={14} /> : <CheckCircle2 className="text-gray-200" size={14} />}
                     </button>
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => setShowLinkModal(false)} className="flex-1 py-3 bg-gray-50 text-gray-400 rounded-xl font-bold text-xs">Cancel</button>
-                  <button onClick={() => setShowCreateForm(true)} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold text-xs">New Client</button>
+                  <button type="button" disabled={isSaving} onClick={() => setShowLinkModal(false)} className="flex-1 py-3 bg-gray-50 text-gray-400 rounded-xl font-bold text-xs disabled:opacity-50">Cancel</button>
+                  <button type="button" disabled={isSaving} onClick={() => setShowCreateForm(true)} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold text-xs disabled:opacity-50">New Client</button>
                 </div>
               </div>
             ) : (
-              <form onSubmit={async (e)=>{e.preventDefault(); const c = await onAddCustomer({id:'c-'+Date.now(), ...newCustomerData, industry:'', role:'', tags:[], createdAt:new Date().toISOString()} as Customer); await finalizeSave(pendingResult!, c.id);}} className="space-y-3">
+              <form onSubmit={async (e)=>{e.preventDefault(); if (isSaving) return; setIsSaving(true); try { const c = await onAddCustomer({id:'c-'+Date.now(), ...newCustomerData, industry:'', role:'', tags:[], createdAt:new Date().toISOString()} as Customer); await finalizeSave(pendingResult!, c.id); } finally { setIsSaving(false); }}} className="space-y-3">
                 <h3 className="text-sm font-bold mb-2">Create New Client</h3>
-                <input placeholder="Name" required className="w-full px-3 py-2 bg-gray-50 rounded-lg text-xs outline-none" value={newCustomerData.name} onChange={e=>setNewCustomerData({...newCustomerData, name: e.target.value})} />
-                <input placeholder="Company" required className="w-full px-3 py-2 bg-gray-50 rounded-lg text-xs outline-none" value={newCustomerData.company} onChange={e=>setNewCustomerData({...newCustomerData, company: e.target.value})} />
-                <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-xs mt-2">Confirm & Review</button>
+                <input placeholder="Name" required className="w-full px-3 py-2 bg-gray-50 rounded-lg text-xs outline-none" value={newCustomerData.name} onChange={e=>setNewCustomerData({...newCustomerData, name: e.target.value})} disabled={isSaving} />
+                <input placeholder="Company" required className="w-full px-3 py-2 bg-gray-50 rounded-lg text-xs outline-none" value={newCustomerData.company} onChange={e=>setNewCustomerData({...newCustomerData, company: e.target.value})} disabled={isSaving} />
+                <button type="submit" disabled={isSaving} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-xs mt-2 disabled:opacity-50 flex items-center justify-center gap-2">{isSaving ? <><Loader2 className="animate-spin" size={14} /> 保存中...</> : 'Confirm & Review'}</button>
               </form>
             )}
           </div>
