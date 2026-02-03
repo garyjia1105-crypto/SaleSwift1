@@ -1,13 +1,8 @@
 
 import React, { useRef, useState } from 'react';
 import { 
-  User, 
-  Shield, 
-  HelpCircle, 
   LogOut, 
   ChevronRight, 
-  Bell,
-  MessageSquareHeart,
   Globe,
   Camera,
   Palette,
@@ -235,17 +230,6 @@ const ProfilePage: React.FC<Props> = ({
              ))}
            </div>
         </MenuItem>
-      </div>
-
-      <div className={`rounded-2xl border soft-shadow overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
-        <MenuItem icon={<User />} label={t.settings} color="text-blue-500" theme={theme} />
-        <MenuItem icon={<Bell />} label={t.notifications} color="text-amber-500" theme={theme} />
-        <MenuItem icon={<Shield />} label={t.security} color="text-emerald-500" theme={theme} />
-      </div>
-
-      <div className={`rounded-2xl border soft-shadow overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
-        <MenuItem icon={<MessageSquareHeart />} label="Feedback" color="text-rose-500" theme={theme} />
-        <MenuItem icon={<HelpCircle />} label="Help Center" color="text-gray-500" theme={theme} />
       </div>
 
       <button 
