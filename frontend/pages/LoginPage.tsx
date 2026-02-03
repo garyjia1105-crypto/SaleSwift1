@@ -110,7 +110,7 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
             </div>
 
             <div className="text-right">
-              <button type="button" className="text-[10px] font-bold text-gray-400 hover:text-blue-600 transition-colors">忘记密码？</button>
+              <button type="button" onClick={() => alert('功能开发中，敬请期待。')} className="text-[10px] font-bold text-gray-400 hover:text-blue-600 transition-colors">忘记密码？</button>
             </div>
 
             <button 

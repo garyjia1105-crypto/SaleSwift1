@@ -160,7 +160,14 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
     }
   }, [assistantHistory, isAssistantThinking]);
 
-  if (!item) return <div className="text-center py-20 text-gray-500">NotFound</div>;
+  if (!item) return (
+    <div className="text-center py-20 space-y-4">
+      <p className="text-gray-500 font-medium">{t.not_found}</p>
+      <button onClick={() => navigate('/history')} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold btn-active-scale">
+        {t.back_to_list}
+      </button>
+    </div>
+  );
 
   const sentimentColor = item.metrics.sentiment === '正面' ? 'text-emerald-600' : 
                          item.metrics.sentiment === '负面' ? 'text-rose-600' : 'text-gray-600';

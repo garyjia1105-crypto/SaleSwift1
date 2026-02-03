@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Customer, Interaction, RolePlayEvaluation } from '../types';
 import { rolePlayInit, rolePlayMessage, evaluateRolePlay, transcribeAudio } from '../services/aiService';
+import { Language } from '../translations';
 import { 
   Send, 
   ArrowLeft, 
@@ -22,12 +23,15 @@ import {
   X
 } from 'lucide-react';
 
+const DEV = import.meta.env.DEV;
+
 interface Props {
   customers: Customer[];
   interactions: Interaction[];
+  lang: Language;
 }
 
-const RolePlayPage: React.FC<Props> = ({ customers, interactions }) => {
+const RolePlayPage: React.FC<Props> = ({ customers, interactions, lang }) => {
   const { customerId } = useParams<{ customerId: string }>();
   const navigate = useNavigate();
   const [messages, setMessages] = useState<{ role: 'user' | 'model', text: string }[]>([]);
@@ -55,7 +59,7 @@ const RolePlayPage: React.FC<Props> = ({ customers, interactions }) => {
       setIsTyping(true);
       rolePlayInit(customer, customerContext)
         .then((text) => setMessages(text ? [{ role: 'model', text }] : []))
-        .catch(console.error)
+        .catch((e) => { if (DEV) console.error(e); })
         .finally(() => setIsTyping(false));
     }
   }, [customer?.id]);
@@ -73,7 +77,7 @@ const RolePlayPage: React.FC<Props> = ({ customers, interactions }) => {
       const text = await rolePlayInit(customer, customerContext);
       setMessages(text ? [{ role: 'model', text }] : []);
     } catch (err) {
-      console.error(err);
+      if (DEV) console.error(err);
     } finally {
       setIsTyping(false);
     }
@@ -106,15 +110,12 @@ const RolePlayPage: React.FC<Props> = ({ customers, interactions }) => {
         mimeType = 'audio/ogg';
       }
       
-      console.log('使用 MIME 类型:', mimeType);
-      
       // 创建 MediaRecorder
       let mediaRecorder: MediaRecorder;
       try {
         mediaRecorder = new MediaRecorder(stream, { mimeType });
       } catch (e) {
-        // 如果指定类型失败，使用默认类型
-        console.warn('使用默认 MIME 类型');
+        if (DEV) console.warn('使用默认 MIME 类型');
         mediaRecorder = new MediaRecorder(stream);
       }
       
@@ -124,18 +125,13 @@ const RolePlayPage: React.FC<Props> = ({ customers, interactions }) => {
       mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
           audioChunksRef.current.push(event.data);
-          console.log('收集到音频数据块:', event.data.size, 'bytes');
         }
       };
 
       mediaRecorder.onstop = async () => {
-        console.log('录音停止，总数据块数:', audioChunksRef.current.length);
-        
-        // 等待一小段时间确保所有数据都已收集
         await new Promise(resolve => setTimeout(resolve, 100));
         
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-        console.log('音频 Blob 大小:', audioBlob.size, 'bytes', '类型:', mimeType);
         
         if (audioBlob.size === 0) {
           setTranscribeError('录音数据为空，请确保录音时间足够长（至少2秒）');
@@ -144,16 +140,14 @@ const RolePlayPage: React.FC<Props> = ({ customers, interactions }) => {
           return;
         }
         
-        if (audioBlob.size < 1000) {
-          console.warn('音频文件很小，可能录音时间太短');
-        }
+        if (audioBlob.size < 1000 && DEV) console.warn('音频文件很小，可能录音时间太短');
         
         await handleAudioProcess(audioBlob);
         stream.getTracks().forEach(track => track.stop());
       };
 
       mediaRecorder.onerror = (event) => {
-        console.error('MediaRecorder 错误:', event);
+        if (DEV) console.error('MediaRecorder 错误:', event);
         const error = (event as any).error;
         const errorMsg = error?.message || '录音过程中发生错误';
         setTranscribeError(errorMsg);
@@ -166,9 +160,8 @@ const RolePlayPage: React.FC<Props> = ({ customers, interactions }) => {
       // 使用 timeslice 参数（每250ms收集一次数据，更稳定）
       mediaRecorder.start(250);
       setRecording(true);
-      console.log('开始录音，MIME类型:', mimeType);
     } catch (err) {
-      console.error('无法开启麦克风:', err);
+      if (DEV) console.error('无法开启麦克风:', err);
       const error = err as Error;
       let errorMsg = error.message || '无法开启麦克风';
       
@@ -188,19 +181,15 @@ const RolePlayPage: React.FC<Props> = ({ customers, interactions }) => {
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && recording) {
-      console.log('停止录音，当前状态:', mediaRecorderRef.current.state);
-      
       try {
-        // 确保在停止前请求所有剩余数据
         if (mediaRecorderRef.current.state === 'recording') {
           mediaRecorderRef.current.requestData();
-          // 直接停止，不要延迟
           mediaRecorderRef.current.stop();
         } else if (mediaRecorderRef.current.state === 'paused') {
           mediaRecorderRef.current.stop();
         }
       } catch (err) {
-        console.error('停止录音时出错:', err);
+        if (DEV) console.error('停止录音时出错:', err);
         // 即使出错也设置状态
         setRecording(false);
         setIsTranscribing(false);
@@ -214,15 +203,11 @@ const RolePlayPage: React.FC<Props> = ({ customers, interactions }) => {
     setIsTranscribing(true);
     setTranscribeError('');
     try {
-      // 检查音频文件大小
-      console.log('处理音频，大小:', blob.size, 'bytes');
       if (blob.size === 0) {
         throw new Error('录音文件为空，请确保录音时间足够长（至少1秒）');
       }
       
-      if (blob.size < 1000) {
-        console.warn('音频文件很小，可能录音时间太短');
-      }
+      if (blob.size < 1000 && DEV) console.warn('音频文件很小，可能录音时间太短');
       
       const reader = new FileReader();
       reader.readAsDataURL(blob);
@@ -238,33 +223,24 @@ const RolePlayPage: React.FC<Props> = ({ customers, interactions }) => {
             throw new Error('录音数据格式错误');
           }
           
-          // 检测实际的 MIME 类型
           const detectedMimeType = result.match(/data:([^;]+)/)?.[1] || 'audio/webm';
-          console.log('发送转录请求，数据长度:', base64data.length, 'MIME类型:', detectedMimeType);
-          
-          console.log('开始调用转录API...');
           const transcribedText = await transcribeAudio(base64data, detectedMimeType);
-          console.log('转录结果:', transcribedText, '长度:', transcribedText?.length);
           
-          // 确保转录状态已清除
           setIsTranscribing(false);
           
           if (transcribedText && transcribedText.trim()) {
-            console.log('转录成功，准备发送消息:', transcribedText.trim());
-            setTranscribeError(''); // 清除之前的错误
+            setTranscribeError('');
             
-            // 使用 setTimeout 确保状态已更新
             setTimeout(async () => {
               try {
                 await sendMessage(transcribedText.trim());
-                console.log('消息已发送');
               } catch (err) {
-                console.error('发送消息失败:', err);
+                if (DEV) console.error('发送消息失败:', err);
                 setTranscribeError((err as Error)?.message || '发送消息失败');
               }
             }, 50);
           } else {
-            console.warn('转录结果为空');
+            if (DEV) console.warn('转录结果为空');
             throw new Error('未能识别出文字内容，请重新录音或检查网络连接');
           }
         } catch (err) {
@@ -281,7 +257,7 @@ const RolePlayPage: React.FC<Props> = ({ customers, interactions }) => {
           }
           
           setTranscribeError(errorMsg);
-          console.error('音频处理失败:', err);
+          if (DEV) console.error('音频处理失败:', err);
           setIsTranscribing(false);
           // 显示错误提示
           setTimeout(() => {
@@ -294,62 +270,56 @@ const RolePlayPage: React.FC<Props> = ({ customers, interactions }) => {
         const errorMsg = '读取录音文件失败';
         setTranscribeError(errorMsg);
         setIsTranscribing(false);
-        console.error('FileReader 错误');
+        if (DEV) console.error('FileReader 错误');
         alert(`语音转文字失败: ${errorMsg}`);
       };
     } catch (err) {
       const errorMsg = (err as Error)?.message || '音频处理失败';
       setTranscribeError(errorMsg);
-      console.error('音频处理失败:', err);
+      if (DEV) console.error('音频处理失败:', err);
       setIsTranscribing(false);
       alert(`语音转文字失败: ${errorMsg}`);
     }
   };
 
   const sendMessage = async (text: string) => {
-    console.log('sendMessage 调用，参数:', { text: text?.substring(0, 50), customer: !!customer, isTyping, evaluation: !!evaluation });
-    
     if (!text || !text.trim()) {
-      console.warn('sendMessage: 文本为空');
+      if (DEV) console.warn('sendMessage: 文本为空');
       return;
     }
     
     if (!customer) {
-      console.warn('sendMessage: 客户信息不存在');
+      if (DEV) console.warn('sendMessage: 客户信息不存在');
       setTranscribeError('客户信息不存在');
       return;
     }
     
     if (isTyping) {
-      console.warn('sendMessage: 正在输入中，跳过');
+      if (DEV) console.warn('sendMessage: 正在输入中，跳过');
       return;
     }
     
     if (evaluation) {
-      console.warn('sendMessage: 正在评估，跳过');
+      if (DEV) console.warn('sendMessage: 正在评估，跳过');
       return;
     }
 
     const newUserMsg = { role: 'user' as const, text: text.trim() };
-    console.log('添加用户消息到界面:', newUserMsg);
     setMessages((prev) => [...prev, newUserMsg]);
     setIsTyping(true);
 
     try {
       const historyWithUser = [...messages, newUserMsg];
-      console.log('调用 rolePlayMessage，历史记录数:', historyWithUser.length);
       const reply = await rolePlayMessage(customer, customerContext, historyWithUser, text.trim());
-      console.log('收到回复:', reply?.substring(0, 50));
       
       if (reply && reply.trim()) {
         setMessages((prev) => [...prev, { role: 'model', text: reply.trim() }]);
-        console.log('AI 回复已添加到界面');
       } else {
-        console.warn('AI 回复为空');
+        if (DEV) console.warn('AI 回复为空');
         setMessages((prev) => [...prev, { role: 'model', text: '抱歉，我没有收到回复。' }]);
       }
     } catch (err) {
-      console.error('sendMessage 错误:', err);
+      if (DEV) console.error('sendMessage 错误:', err);
       const errorMsg = (err as Error)?.message || '发送消息失败';
       setTranscribeError(errorMsg);
       // 即使出错也显示用户消息
@@ -386,7 +356,7 @@ const RolePlayPage: React.FC<Props> = ({ customers, interactions }) => {
       const report = await evaluateRolePlay(messages);
       setEvaluation(report);
     } catch (err) {
-      console.error(err);
+      if (DEV) console.error(err);
     } finally {
       setIsEvaluating(false);
     }

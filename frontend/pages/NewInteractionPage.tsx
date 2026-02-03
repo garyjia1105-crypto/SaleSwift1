@@ -357,7 +357,7 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
           <div className="bg-white rounded-t-3xl w-full p-6 pb-10 animate-in slide-in-from-bottom duration-300">
             {!showCreateForm ? (
               <div className="space-y-4 text-center">
-                <h3 className="text-sm font-bold">Link Customer Profile</h3>
+                <h3 className="text-sm font-bold">{t.link_profile_title}</h3>
                 <div className="space-y-2 max-h-40 overflow-y-auto no-scrollbar">
                   {customers.slice(0, 3).map(c => (
                     <button key={c.id} type="button" disabled={isSaving} onClick={() => void finalizeSave(pendingResult!, c.id)} className="w-full p-3 bg-gray-50 rounded-xl flex justify-between items-center text-left active:bg-blue-50 disabled:opacity-50 disabled:pointer-events-none">
@@ -367,16 +367,16 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <button type="button" disabled={isSaving} onClick={() => setShowLinkModal(false)} className="flex-1 py-3 bg-gray-50 text-gray-400 rounded-xl font-bold text-xs disabled:opacity-50">Cancel</button>
-                  <button type="button" disabled={isSaving} onClick={() => setShowCreateForm(true)} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold text-xs disabled:opacity-50">New Client</button>
+                  <button type="button" disabled={isSaving} onClick={() => setShowLinkModal(false)} className="flex-1 py-3 bg-gray-50 text-gray-400 rounded-xl font-bold text-xs disabled:opacity-50">{t.cancel}</button>
+                  <button type="button" disabled={isSaving} onClick={() => setShowCreateForm(true)} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold text-xs disabled:opacity-50">{t.new_client}</button>
                 </div>
               </div>
             ) : (
               <form onSubmit={async (e)=>{e.preventDefault(); if (isSaving) return; setIsSaving(true); try { const c = await onAddCustomer({id:'c-'+Date.now(), ...newCustomerData, industry:'', role:'', tags:[], createdAt:new Date().toISOString()} as Customer); await finalizeSave(pendingResult!, c.id); } finally { setIsSaving(false); }}} className="space-y-3">
-                <h3 className="text-sm font-bold mb-2">Create New Client</h3>
-                <input placeholder="Name" required className="w-full px-3 py-2 bg-gray-50 rounded-lg text-xs outline-none" value={newCustomerData.name} onChange={e=>setNewCustomerData({...newCustomerData, name: e.target.value})} disabled={isSaving} />
-                <input placeholder="Company" required className="w-full px-3 py-2 bg-gray-50 rounded-lg text-xs outline-none" value={newCustomerData.company} onChange={e=>setNewCustomerData({...newCustomerData, company: e.target.value})} disabled={isSaving} />
-                <button type="submit" disabled={isSaving} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-xs mt-2 disabled:opacity-50 flex items-center justify-center gap-2">{isSaving ? <><Loader2 className="animate-spin" size={14} /> 保存中...</> : 'Confirm & Review'}</button>
+                <h3 className="text-sm font-bold mb-2">{t.create_new_client}</h3>
+                <input placeholder={t.name_placeholder} required className="w-full px-3 py-2 bg-gray-50 rounded-lg text-xs outline-none" value={newCustomerData.name} onChange={e=>setNewCustomerData({...newCustomerData, name: e.target.value})} disabled={isSaving} />
+                <input placeholder={t.company_placeholder} required className="w-full px-3 py-2 bg-gray-50 rounded-lg text-xs outline-none" value={newCustomerData.company} onChange={e=>setNewCustomerData({...newCustomerData, company: e.target.value})} disabled={isSaving} />
+                <button type="submit" disabled={isSaving} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-xs mt-2 disabled:opacity-50 flex items-center justify-center gap-2">{isSaving ? <><Loader2 className="animate-spin" size={14} /> {t.saving}</> : t.confirm_review}</button>
               </form>
             )}
           </div>

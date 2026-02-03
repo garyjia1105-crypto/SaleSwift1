@@ -17,6 +17,7 @@ import CustomerManagementPage from './pages/CustomerManagementPage';
 import CustomerDetailPage from './pages/CustomerDetailPage';
 import SchedulePage from './pages/SchedulePage';
 import RolePlayPage from './pages/RolePlayPage';
+import GrowthPage from './pages/GrowthPage';
 import ProfilePage from './pages/ProfilePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -309,8 +310,9 @@ const App: React.FC = () => {
               <Route path="/schedules" element={<SchedulePage schedules={schedules} customers={customers} onAddSchedule={addSchedule} onToggleStatus={toggleScheduleStatus} lang={language} />} />
               <Route path="/customers" element={<CustomerManagementPage customers={customers} onSync={saveCustomers} onAdd={addCustomer} lang={language} />} />
               <Route path="/customers/:id" element={<CustomerDetailPage customers={customers} interactions={interactions} schedules={schedules} coursePlans={coursePlans} onSaveCoursePlan={saveCoursePlan} onAddSchedule={addSchedule} onUpdateCustomer={updateCustomer} lang={language} />} />
-              <Route path="/roleplay/:customerId" element={<RolePlayPage customers={customers} interactions={interactions} />} />
-              <Route path="/history" element={<HistoryPage interactions={interactions} />} />
+              <Route path="/roleplay/:customerId" element={<RolePlayPage customers={customers} interactions={interactions} lang={language} />} />
+              <Route path="/history" element={<HistoryPage interactions={interactions} lang={language} />} />
+              <Route path="/growth" element={<GrowthPage interactions={interactions} />} />
               <Route path="/interaction/:id" element={<InteractionDetailPage interactions={interactions} schedules={schedules} onAddSchedule={addSchedule} lang={language} />} />
               <Route path="/profile" element={
                 <ProfilePage 

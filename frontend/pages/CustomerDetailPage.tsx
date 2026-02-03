@@ -66,7 +66,14 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
     ['培训', '教育', '课程', 'training', 'education', 'course'].includes(tag.toLowerCase())
   );
 
-  if (!customer) return <div className="p-20 text-center text-xs text-gray-400">NotFound</div>;
+  if (!customer) return (
+    <div className="p-20 text-center space-y-4">
+      <p className="text-gray-500 font-medium text-sm">{t.not_found}</p>
+      <button onClick={() => navigate('/customers')} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold btn-active-scale">
+        {t.back_to_list}
+      </button>
+    </div>
+  );
 
   const handleSaveContact = () => {
     onUpdateCustomer({
@@ -139,13 +146,13 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
                   <input 
                     className="w-full text-[9px] px-1.5 py-0.5 bg-gray-50 border border-blue-100 rounded-md outline-none" 
                     value={editForm.role}
-                    placeholder="Role"
+                    placeholder={t.role_placeholder}
                     onChange={e => setEditForm({...editForm, role: e.target.value})}
                   />
                   <input 
                     className="w-full text-[9px] px-1.5 py-0.5 bg-gray-50 border border-blue-100 rounded-md outline-none" 
                     value={editForm.company}
-                    placeholder="Company"
+                    placeholder={t.company_placeholder}
                     onChange={e => setEditForm({...editForm, company: e.target.value})}
                   />
                 </div>
