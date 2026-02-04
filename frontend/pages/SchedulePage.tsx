@@ -159,7 +159,7 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
   };
 
   return (
-    <div className="page-transition space-y-5">
+    <div className="page-transition space-y-5 relative">
       <header>
         <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
         <p className="text-[10px] text-gray-400 font-medium mt-1">{t.subtitle}</p>
@@ -251,8 +251,8 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
         )}
       </div>
 
-      {/* 右下角悬浮：手动录入、语音录入 */}
-      <div className="fixed right-4 bottom-20 z-40 flex flex-col items-end gap-2">
+      {/* 右下角悬浮（相对主界面）：手动录入、语音录入 */}
+      <div className="absolute right-4 bottom-4 z-40 flex flex-col items-end gap-2">
         <button
           onClick={() => setShowAddForm(v => !v)}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-white text-[10px] font-bold shadow-lg btn-active-scale ${

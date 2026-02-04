@@ -210,7 +210,7 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
   };
 
   return (
-    <div className="page-transition space-y-6 pb-12">
+    <div className="page-transition space-y-6 pb-12 relative">
       <header className="text-center">
         <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
         <p className="text-[10px] text-gray-400 font-medium mt-1">{t.subtitle}</p>
@@ -360,8 +360,8 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
         }
       }} />
 
-      {/* 右下角悬浮：生成 AI 报告（有内容时）、录音/停止 */}
-      <div className="fixed right-4 bottom-20 z-40 flex flex-col items-end gap-2">
+      {/* 右下角悬浮（相对主界面）：生成 AI 报告（有内容时）、录音/停止 */}
+      <div className="absolute right-4 bottom-4 z-40 flex flex-col items-end gap-2">
         {hasContent && (
           <button
             onClick={handleAnalyze}

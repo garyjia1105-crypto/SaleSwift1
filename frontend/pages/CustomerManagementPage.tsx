@@ -106,7 +106,7 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
   });
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-500">
+    <div className="space-y-5 animate-in fade-in duration-500 relative">
       <header className="flex justify-between items-center">
         <div>
           <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
@@ -221,10 +221,10 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
         )}
       </div>
 
-      {/* 右下角悬浮：新增客户 */}
+      {/* 右下角悬浮（相对主界面）：新增客户 */}
       <button
         onClick={() => setShowAddForm(true)}
-        className="fixed right-4 bottom-20 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-blue-600 text-white text-[10px] font-bold shadow-lg shadow-blue-200 btn-active-scale"
+        className="absolute right-4 bottom-4 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-blue-600 text-white text-[10px] font-bold shadow-lg shadow-blue-200 btn-active-scale"
       >
         <Plus size={14} /> {t.add}
       </button>
