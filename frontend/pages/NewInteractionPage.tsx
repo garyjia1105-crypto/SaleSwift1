@@ -182,7 +182,7 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
   };
 
   return (
-    <div className="page-transition flex flex-col min-h-full">
+    <div className="page-transition flex flex-col min-h-full relative">
       <header className="shrink-0 px-1 pt-1 pb-2">
         <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
         <p className="text-[10px] text-gray-400 font-medium mt-1">{t.subtitle}</p>
@@ -245,6 +245,31 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
           </div>
         )}
         <div className="flex items-end gap-2">
+          {/* 依次：自动匹配客户、上传、录音 */}
+          <div className="relative min-w-[100px] min-h-[40px] bg-blue-50/60 rounded-xl flex items-center pl-2 pr-7 py-2 border border-blue-100 shrink-0">
+            <UserCheck className="text-blue-500 shrink-0" size={12} />
+            <select
+              className="flex-1 min-w-0 bg-transparent text-[10px] font-bold text-blue-900 outline-none appearance-none"
+              value={selectedCustomerId}
+              onChange={(e) => setSelectedCustomerId(e.target.value)}
+            >
+              <option value="">{t.match_customer}</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                  {c.company ? ` · ${c.company}` : ''}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none" size={12} />
+          </div>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all btn-active-scale"
+          >
+            <Upload size={18} />
+          </button>
           <button
             type="button"
             onClick={recording ? stopRecording : startRecording}
@@ -255,7 +280,7 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
           >
             {isTranscribing ? <Loader2 className="animate-spin" size={20} /> : <Mic size={20} />}
           </button>
-          <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+          <div className="flex-1 min-w-0">
             <textarea
               className="w-full min-h-[40px] max-h-24 py-2.5 px-3 bg-gray-50 border border-gray-100 rounded-xl text-xs font-medium resize-none focus:ring-1 focus:ring-blue-500 outline-none"
               placeholder={t.placeholder}
@@ -266,32 +291,6 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
               }}
               rows={2}
             />
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-gray-500 hover:bg-gray-100"
-              >
-                <Upload size={12} /> {selectedFile ? t.change_file : t.upload}
-              </button>
-              <div className="flex-1 relative min-h-[32px] bg-blue-50/60 rounded-lg flex items-center pl-2 pr-7 py-1 border border-blue-100">
-                <UserCheck className="text-blue-500 shrink-0" size={12} />
-                <select
-                  className="flex-1 min-w-0 bg-transparent text-[10px] font-bold text-blue-900 outline-none appearance-none"
-                  value={selectedCustomerId}
-                  onChange={(e) => setSelectedCustomerId(e.target.value)}
-                >
-                  <option value="">{t.match_customer}</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                      {c.company ? ` · ${c.company}` : ''}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none" size={12} />
-              </div>
-            </div>
           </div>
           <button
             type="button"
@@ -323,7 +322,7 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
       />
 
       {showLinkModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-end justify-center">
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-end justify-center">
           <div className="bg-white rounded-t-3xl w-full max-w-[480px] p-6 pb-10 animate-in slide-in-from-bottom duration-300">
             {!showCreateForm ? (
               <div className="space-y-4 text-center">
