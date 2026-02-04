@@ -353,8 +353,8 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
       }} />
 
       {showLinkModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-end">
-          <div className="bg-white rounded-t-3xl w-full p-6 pb-10 animate-in slide-in-from-bottom duration-300">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-end justify-center">
+          <div className="bg-white rounded-t-3xl w-full max-w-[480px] p-6 pb-10 animate-in slide-in-from-bottom duration-300">
             {!showCreateForm ? (
               <div className="space-y-4 text-center">
                 <h3 className="text-sm font-bold">{t.link_profile_title}</h3>

@@ -160,34 +160,61 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
 
   return (
     <div className="page-transition space-y-5">
-      <header className="flex justify-between items-center">
-        <div>
-          <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
-          <p className="text-[9px] text-gray-400 font-medium mt-1">{t.subtitle}</p>
-        </div>
-        <button onClick={() => setShowAddForm(true)} className="p-1.5 bg-blue-600 text-white rounded-lg btn-active-scale soft-shadow">
-          <Plus size={14} />
-        </button>
+      <header>
+        <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
+        <p className="text-[9px] text-gray-400 font-medium mt-1">{t.subtitle}</p>
       </header>
 
-      <div className="bg-white p-3 rounded-2xl border border-gray-100 soft-shadow flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <div className="p-2 bg-blue-50 text-blue-500 rounded-xl shrink-0"><Sparkles size={14} /></div>
-          <div>
-            <h4 className="font-bold text-gray-900 text-[10px] leading-tight">{t.voice_title}</h4>
-            <p className="text-[8px] text-gray-400">{t.voice_desc}</p>
+      <div className="bg-white p-3 rounded-2xl border border-gray-100 soft-shadow">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="p-2 bg-blue-50 text-blue-500 rounded-xl shrink-0"><Sparkles size={14} /></div>
+            <div className="min-w-0">
+              <h4 className="font-bold text-gray-900 text-[10px] leading-tight">{t.voice_title}</h4>
+              <p className="text-[8px] text-gray-400 truncate">{t.voice_desc}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button 
+              onClick={recording ? stopVoiceInput : startVoiceInput} 
+              disabled={isProcessing}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold btn-active-scale transition-all ${
+                recording ? 'bg-red-500 text-white' : 'bg-blue-600 text-white'
+              }`}
+            >
+              {isProcessing ? <Loader2 className="animate-spin" size={12} /> : recording ? <X size={12} /> : <Mic size={12} />}
+              {recording ? t.recording : isProcessing ? '处理中...' : t.start}
+            </button>
+            <button 
+              onClick={() => setShowAddForm(v => !v)} 
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold btn-active-scale transition-all ${
+                showAddForm ? 'bg-emerald-600 text-white' : 'bg-emerald-500 text-white'
+              }`}
+              title={t.manual}
+            >
+              <Plus size={12} />
+              {t.manual}
+            </button>
           </div>
         </div>
-        <button 
-          onClick={recording ? stopVoiceInput : startVoiceInput} 
-          disabled={isProcessing}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold btn-active-scale transition-all ${
-            recording ? 'bg-red-500 text-white' : 'bg-blue-600 text-white'
-          }`}
-        >
-          {isProcessing ? <Loader2 className="animate-spin" size={12} /> : recording ? <X size={12} /> : <Mic size={12} />}
-          {recording ? t.recording : isProcessing ? '处理中...' : t.start}
-        </button>
+        {showAddForm && (
+          <div className="pt-3 border-t border-emerald-100 bg-emerald-50/50 rounded-xl px-1 -mx-1">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-[10px] font-bold text-emerald-700">{t.manual}</span>
+              <button type="button" onClick={() => setShowAddForm(false)} className="text-emerald-600 p-1 rounded hover:bg-emerald-100" aria-label="关闭">
+                <X size={14} />
+              </button>
+            </div>
+            <form onSubmit={(e)=>{e.preventDefault(); onAddSchedule({id:'s-'+Date.now(), ...newSchedule, status:'pending'}); setShowAddForm(false); setNewSchedule({ title: '', date: '', time: '', customerId: '' });}} className="space-y-2.5">
+              <input required placeholder={t.placeholder_title} className="w-full px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" value={newSchedule.title} onChange={e=>setNewSchedule({...newSchedule, title: e.target.value})} />
+              <div className="grid grid-cols-2 gap-2">
+                <input type="date" required className="px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" value={newSchedule.date} onChange={e=>setNewSchedule({...newSchedule, date: e.target.value})} />
+                <input type="time" className="px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" value={newSchedule.time} onChange={e=>setNewSchedule({...newSchedule, time: e.target.value})} />
+              </div>
+              <button type="submit" className="w-full py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-xs btn-active-scale">{t.confirm}</button>
+            </form>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-2.5">
@@ -225,21 +252,6 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
         )}
       </div>
 
-      {showAddForm && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-end">
-          <div className="bg-white rounded-t-3xl w-full p-6 pb-8 animate-in slide-in-from-bottom duration-300">
-            <div className="flex justify-between items-center mb-4"><h3 className="text-xs font-bold">{t.manual}</h3><button onClick={() => setShowAddForm(false)} className="text-gray-400 p-1"><X size={16}/></button></div>
-            <form onSubmit={(e)=>{e.preventDefault(); onAddSchedule({id:'s-'+Date.now(), ...newSchedule, status:'pending'}); setShowAddForm(false);}} className="space-y-3">
-              <input required placeholder={t.placeholder_title} className="w-full px-3 py-2.5 bg-gray-50 rounded-lg text-xs outline-none" value={newSchedule.title} onChange={e=>setNewSchedule({...newSchedule, title: e.target.value})} />
-              <div className="grid grid-cols-2 gap-2">
-                <input type="date" required className="px-3 py-2.5 bg-gray-50 rounded-lg text-xs outline-none" value={newSchedule.date} onChange={e=>setNewSchedule({...newSchedule, date: e.target.value})} />
-                <input type="time" className="px-3 py-2.5 bg-gray-50 rounded-lg text-xs outline-none" value={newSchedule.time} onChange={e=>setNewSchedule({...newSchedule, time: e.target.value})} />
-              </div>
-              <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-xs btn-active-scale mt-2">{t.confirm}</button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

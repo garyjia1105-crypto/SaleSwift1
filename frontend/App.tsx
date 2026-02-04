@@ -305,8 +305,9 @@ const App: React.FC = () => {
             <Routes>
               <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
               <Route path="/register" element={<RegisterPage onLogin={handleLogin} />} />
-              <Route path="/" element={<DashboardPage interactions={interactions} customers={customers} schedules={schedules} user={user} lang={language} theme={theme} />} />
+              <Route path="/" element={<NewInteractionPage onSave={saveInteraction} customers={customers} interactions={interactions} onAddCustomer={addCustomer} lang={language} />} />
               <Route path="/new" element={<NewInteractionPage onSave={saveInteraction} customers={customers} interactions={interactions} onAddCustomer={addCustomer} lang={language} />} />
+              <Route path="/dashboard" element={<DashboardPage interactions={interactions} customers={customers} schedules={schedules} user={user} lang={language} theme={theme} />} />
               <Route path="/schedules" element={<SchedulePage schedules={schedules} customers={customers} onAddSchedule={addSchedule} onToggleStatus={toggleScheduleStatus} lang={language} />} />
               <Route path="/customers" element={<CustomerManagementPage customers={customers} onSync={saveCustomers} onAdd={addCustomer} lang={language} />} />
               <Route path="/customers/:id" element={<CustomerDetailPage customers={customers} interactions={interactions} schedules={schedules} coursePlans={coursePlans} onSaveCoursePlan={saveCoursePlan} onAddSchedule={addSchedule} onUpdateCustomer={updateCustomer} lang={language} />} />
@@ -323,6 +324,7 @@ const App: React.FC = () => {
                   lang={language} 
                   onSetLanguage={setLanguage} 
                   theme={theme} 
+                  onSetTheme={setTheme}
                   avatar={avatar} 
                   onSetAvatar={(v) => { setAvatar(v); if (v) api.users.patchMe({ avatar: v }).catch(() => {}); }}
                   apiKey={apiKey}
@@ -337,8 +339,8 @@ const App: React.FC = () => {
 
         {isLoggedIn && (
           <nav className={`absolute bottom-0 left-0 right-0 ${theme === 'dark' ? 'bg-gray-800/90 border-gray-700 shadow-none' : 'bg-white/90 shadow-[0_-8px_30px_rgb(0,0,0,0.03)] border-gray-100'} backdrop-blur-md border-t px-2 py-2 flex items-center justify-around z-50 pb-safe`}>
-            <MobileNavItem icon={<LayoutDashboard />} label={t.nav.dashboard} to="/" active={isActive('/')} theme={theme} />
-            <MobileNavItem icon={<PlusCircle />} label={t.nav.new} to="/new" active={isActive('/new')} theme={theme} />
+            <MobileNavItem icon={<PlusCircle />} label={t.nav.new} to="/" active={isActive('/') || isActive('/new')} theme={theme} />
+            <MobileNavItem icon={<LayoutDashboard />} label={t.nav.dashboard} to="/dashboard" active={isActive('/dashboard')} theme={theme} />
             <MobileNavItem icon={<CalendarDays />} label={t.nav.schedule} to="/schedules" active={isActive('/schedules')} theme={theme} />
             <MobileNavItem icon={<Users />} label={t.nav.customers} to="/customers" active={location.pathname.startsWith('/customers')} theme={theme} />
             <MobileNavItem icon={<User />} label={t.nav.me} to="/profile" active={isActive('/profile')} theme={theme} />
