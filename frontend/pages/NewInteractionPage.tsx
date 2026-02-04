@@ -12,7 +12,8 @@ import {
   CheckCircle2,
   FileAudio,
   Trash2,
-  ChevronRight
+  ChevronRight,
+  ChevronDown
 } from 'lucide-react';
 import { analyzeSalesInteraction, transcribeAudio } from '../services/aiService';
 import { Interaction, Customer } from '../types';
@@ -274,12 +275,19 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
               >
                 <Upload size={12} /> {selectedFile ? t.change_file : t.upload}
               </button>
-              <div className="flex-1 bg-blue-50/40 px-3 py-2 rounded-xl flex items-center gap-2 border border-blue-50">
-                <UserCheck className="text-blue-500" size={12} />
-                <select className="bg-transparent text-[10px] font-bold text-blue-900 outline-none w-full" value={selectedCustomerId} onChange={e => setSelectedCustomerId(e.target.value)}>
+              <div className="flex-1 relative min-h-[40px] bg-blue-50/60 rounded-xl flex items-center gap-2.5 pl-3 pr-9 py-2 border border-blue-100 shadow-sm">
+                <UserCheck className="text-blue-500 shrink-0" size={14} />
+                <select
+                  className="flex-1 min-w-0 bg-transparent text-[11px] font-bold text-blue-900 outline-none appearance-none cursor-pointer"
+                  value={selectedCustomerId}
+                  onChange={e => setSelectedCustomerId(e.target.value)}
+                >
                   <option value="">{t.match_customer}</option>
-                  {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {customers.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}{c.company ? ` · ${c.company}` : ''}</option>
+                  ))}
                 </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none shrink-0" size={14} />
               </div>
             </div>
           </div>

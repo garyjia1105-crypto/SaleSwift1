@@ -10,7 +10,6 @@ import {
   Lightbulb,
   Zap,
   Calendar,
-  Smile,
   MessageSquare,
   CalendarPlus,
   CheckCircle2,
@@ -19,7 +18,6 @@ import {
   Loader2,
   X,
   FileText,
-  TrendingUp,
   Cpu,
   Clock,
   Send,
@@ -49,16 +47,6 @@ const DetailSection: React.FC<{ title: string, icon: React.ReactNode, children: 
     </div>
   );
 };
-
-const MetricPill: React.FC<{ label: string, value: string | number, subValue?: string }> = ({ label, value, subValue }) => (
-  <div className="bg-gray-50 p-3 md:p-4 rounded-xl border border-gray-100 flex-1">
-    <p className="text-[10px] md:text-xs text-gray-500 mb-0.5 md:mb-1 uppercase font-bold tracking-wider">{label}</p>
-    <div className="flex items-baseline gap-1 md:gap-2">
-      <span className="text-lg md:text-xl font-bold text-gray-900">{value}</span>
-      {subValue && <span className="text-[10px] md:text-sm text-gray-400">{subValue}</span>}
-    </div>
-  </div>
-);
 
 // Custom light markdown-style parser for better display
 // Fix: Removed hardcoded text-gray-600 to allow inheriting color from parent container
@@ -253,14 +241,31 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
             </span>
           </div>
           <p className="text-xs md:text-base text-gray-500 font-bold uppercase tracking-wider">{item.customerProfile.company}</p>
+          {(item.customerProfile.role || item.customerProfile.industry) && (
+            <p className="text-[10px] text-gray-400 mt-0.5 font-medium">
+              {[item.customerProfile.role, item.customerProfile.industry].filter(Boolean).join(' · ')}
+            </p>
+          )}
         </div>
-        <div className="flex flex-row md:flex-col items-center md:items-end gap-2 md:gap-1">
-          <span className="text-gray-400 text-[9px] font-black uppercase tracking-widest">{t.confidence}</span>
-          <div className="flex items-center gap-2 bg-white px-2.5 py-1 rounded-full border border-gray-100 shadow-sm">
-            <div className="w-16 md:w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-600" style={{ width: `${item.metrics.confidenceScore}%` }}></div>
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-row items-center gap-2 md:gap-1">
+            <span className="text-gray-400 text-[9px] font-black uppercase tracking-widest">{t.confidence}</span>
+            <div className="flex items-center gap-2 bg-white px-2.5 py-1 rounded-full border border-gray-100 shadow-sm">
+              <div className="w-16 md:w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-600" style={{ width: `${item.metrics.confidenceScore}%` }}></div>
+              </div>
+              <span className="font-black text-[10px] text-gray-900">{item.metrics.confidenceScore}%</span>
             </div>
-            <span className="font-black text-[10px] text-gray-900">{item.metrics.confidenceScore}%</span>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-1.5 text-[9px]">
+            <span className="text-gray-400 font-bold uppercase tracking-wider">{t.talk_ratio}</span>
+            <span className="text-gray-900 font-black">{(item.metrics.talkRatio * 100).toFixed(0)}%</span>
+            <span className="text-gray-300">·</span>
+            <span className="text-gray-400 font-bold uppercase tracking-wider">{t.questions}</span>
+            <span className="text-gray-900 font-black">{item.metrics.questionRate}</span>
+            <span className="text-gray-300">·</span>
+            <span className="text-gray-400 font-bold uppercase tracking-wider">{t.sentiment}</span>
+            <span className={`font-black ${sentimentColor}`}>{item.metrics.sentiment}</span>
           </div>
         </div>
       </div>
@@ -311,7 +316,6 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
                       <button 
                         onClick={() => handleDeepDive(p)}
                         className="flex items-center gap-1 px-2 py-1 bg-emerald-500 text-white rounded-lg text-[8px] font-black uppercase tracking-widest btn-active-scale shadow-sm"
-                        title={t.deep_dive}
                       >
                         <Cpu size={10} /> {t.deep_dive}
                       </button>
@@ -353,29 +357,6 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
             </div>
           </DetailSection>
 
-          {/* Performance Metrics */}
-          <DetailSection title={t.metrics} icon={<TrendingUp />}>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <MetricPill label={t.talk_ratio} value={`${(item.metrics.talkRatio * 100).toFixed(0)}%`} />
-                <MetricPill label={t.questions} value={item.metrics.questionRate} />
-              </div>
-              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    item.metrics.sentiment === '正面' ? 'bg-emerald-100 text-emerald-600' : 
-                    item.metrics.sentiment === '负面' ? 'bg-rose-100 text-rose-600' : 'bg-gray-200 text-gray-600'
-                  }`}>
-                    <Smile size={18} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t.sentiment}</p>
-                    <p className={`text-xs font-black ${sentimentColor}`}>{item.metrics.sentiment}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </DetailSection>
       </div>
 
       {/* --- PAGE BOTTOM AI ASSISTANT --- */}

@@ -190,7 +190,6 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold btn-active-scale transition-all ${
                 showAddForm ? 'bg-emerald-600 text-white' : 'bg-emerald-500 text-white'
               }`}
-              title={t.manual}
             >
               <Plus size={12} />
               {t.manual}

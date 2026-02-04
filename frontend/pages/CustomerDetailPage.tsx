@@ -51,6 +51,7 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
   const [isEditingContact, setIsEditingContact] = useState(false);
   const customer = customers.find(c => c.id === id);
   const [editForm, setEditForm] = useState({ 
+    name: customer?.name || '',
     email: customer?.email || '', 
     phone: customer?.phone || '',
     company: customer?.company || '',
@@ -76,9 +77,12 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
   );
 
   const handleSaveContact = () => {
+    const name = (editForm.name || '').trim();
+    if (!name) return;
     onUpdateCustomer({
       ...customer,
-      ...editForm
+      ...editForm,
+      name
     });
     setIsEditingContact(false);
   };
@@ -137,12 +141,18 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
         <div className="flex justify-between items-start mb-4">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center text-lg font-black shrink-0">
-              {customer.name.charAt(0)}
+              {(editForm.name || customer.name).trim().charAt(0) || '?'}
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-base font-bold text-gray-900 leading-none">{customer.name}</h2>
               {isEditingContact ? (
-                <div className="mt-1.5 space-y-1">
+                <div className="space-y-1">
+                  <input 
+                    required
+                    className="w-full text-[9px] px-1.5 py-0.5 bg-gray-50 border border-blue-100 rounded-md outline-none font-bold text-gray-900" 
+                    value={editForm.name}
+                    placeholder={t.name_placeholder}
+                    onChange={e => setEditForm({...editForm, name: e.target.value})}
+                  />
                   <input 
                     className="w-full text-[9px] px-1.5 py-0.5 bg-gray-50 border border-blue-100 rounded-md outline-none" 
                     value={editForm.role}
@@ -157,12 +167,19 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
                   />
                 </div>
               ) : (
-                <p className="text-[10px] text-gray-500 mt-1 font-medium truncate">{customer.role} @ {customer.company}</p>
+                <>
+                  <h2 className="text-base font-bold text-gray-900 leading-none">{customer.name}</h2>
+                  <p className="text-[10px] text-gray-500 mt-1 font-medium truncate">{customer.role} @ {customer.company}</p>
+                </>
               )}
             </div>
           </div>
           <button 
-            onClick={() => isEditingContact ? handleSaveContact() : setIsEditingContact(true)}
+            onClick={() => {
+              if (isEditingContact) handleSaveContact();
+              else setEditForm({ name: customer.name, email: customer.email || '', phone: customer.phone || '', company: customer.company || '', role: customer.role || '' });
+              setIsEditingContact(v => !v);
+            }}
             className={`p-1.5 rounded-lg transition-all ${isEditingContact ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-50 text-gray-400'}`}
           >
             {isEditingContact ? <Check size={14} /> : <Edit2 size={14} />}
@@ -177,7 +194,7 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
             </span>
           ))}
           {showTagInput ? (
-            <input autoFocus className="px-1.5 py-0.5 text-[8px] border border-blue-200 rounded-md outline-none bg-white w-14" onKeyDown={(e)=>{if(e.key==='Enter' && newTagText.trim()){onUpdateCustomer({...customer, tags: [...new Set([...customer.tags, newTagText.trim()])]}); setNewTagText(''); setShowTagInput(false);}}} value={newTagText} onChange={e=>setNewTagText(e.target.value)} onBlur={()=>setShowTagInput(false)} />
+            <input autoFocus className="px-1.5 py-0.5 text-[8px] border border-blue-200 rounded-md outline-none bg-white w-14" onKeyDown={(e)=>{if(e.key==='Enter' && newTagText.trim()){onUpdateCustomer({...customer, tags: [...new Set([...customer.tags, newTagText.trim()])]}); setNewTagText(''); setShowTagInput(false);}}} value={newTagText} onChange={e=>setNewTagText(e.target.value)} onBlur={()=>{if(newTagText.trim()){onUpdateCustomer({...customer, tags: [...new Set([...customer.tags, newTagText.trim()])]}); setNewTagText('');} setShowTagInput(false);}} />
           ) : (
             <button onClick={()=>setShowTagInput(true)} className="flex items-center gap-1 px-1.5 py-0.5 border border-dashed border-gray-200 text-gray-400 rounded-md text-[8px] font-bold btn-active-scale"><Plus size={8} /> {t.tags_label}</button>
           )}

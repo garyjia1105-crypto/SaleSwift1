@@ -317,8 +317,6 @@ const App: React.FC = () => {
                 <ProfilePage 
                   user={user}
                   onLogout={handleLogout} 
-                  interactionCount={interactions.length} 
-                  customerCount={customers.length} 
                   lang={language} 
                   onSetLanguage={setLanguage} 
                   theme={theme} 

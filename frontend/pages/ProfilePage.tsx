@@ -19,8 +19,6 @@ import { Theme } from '../App';
 interface Props {
   user: { email: string; displayName: string } | null;
   onLogout: () => void;
-  interactionCount: number;
-  customerCount: number;
   lang: Language;
   onSetLanguage: (lang: Language) => void;
   theme: Theme;
@@ -80,8 +78,6 @@ const MenuItem: React.FC<{ icon: React.ReactNode, label: string, color?: string,
 const ProfilePage: React.FC<Props> = ({ 
   user,
   onLogout, 
-  interactionCount, 
-  customerCount, 
   lang, 
   onSetLanguage, 
   theme, 
@@ -143,17 +139,6 @@ const ProfilePage: React.FC<Props> = ({
           {user?.email || ''}
         </p>
       </header>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className={`p-4 rounded-2xl border soft-shadow text-center ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}>
-          <p className="text-[8px] text-gray-400 font-black uppercase tracking-widest mb-1">Archived</p>
-          <p className={`text-xl font-black ${theme === 'nature' ? 'text-emerald-600' : 'text-blue-500'}`}>{interactionCount}</p>
-        </div>
-        <div className={`p-4 rounded-2xl border soft-shadow text-center ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}>
-          <p className="text-[8px] text-gray-400 font-black uppercase tracking-widest mb-1">Active</p>
-          <p className={`text-xl font-black ${theme === 'nature' ? 'text-emerald-600' : 'text-blue-500'}`}>{customerCount}</p>
-        </div>
-      </div>
 
       <div className={`rounded-2xl border soft-shadow overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
         <div className={`px-4 py-3 border-b ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-400' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
