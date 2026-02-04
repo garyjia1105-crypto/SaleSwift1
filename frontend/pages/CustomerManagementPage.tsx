@@ -106,20 +106,13 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
   });
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-500 relative">
-      <header className="flex justify-between items-center">
-        <div>
-          <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
-          <p className="text-[10px] text-gray-500 font-medium mt-1">{t.subtitle}</p>
-        </div>
-        <button 
-          onClick={() => setShowAddForm(true)}
-          className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-[10px] font-bold shadow-sm active:scale-95"
-        >
-          <Plus size={12} /> {t.add}
-        </button>
+    <div className="page-transition flex flex-col min-h-full relative animate-in fade-in duration-500">
+      <header className="shrink-0">
+        <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
+        <p className="text-[10px] text-gray-500 font-medium mt-1">{t.subtitle}</p>
       </header>
 
+      <main className="flex-1 overflow-auto pb-44 space-y-4">
       <div className="p-4 rounded-2xl border border-gray-100 soft-shadow bg-white">
         <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-4">{t.funnel}</h3>
         <div className="h-[140px] w-full min-w-0">
@@ -142,26 +135,6 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
       </div>
 
       <div className="space-y-3">
-        <div className="relative group">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-          <input 
-            type="text" 
-            placeholder={t.search}
-            className="w-full pl-9 pr-12 py-3 bg-white border border-gray-100 rounded-xl focus:ring-1 focus:ring-blue-500 outline-none soft-shadow text-xs"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <button 
-            onClick={startSearchVoiceInput} 
-            disabled={searchRecording || isSearchVoiceProcessing}
-            className={`absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-all ${
-              searchRecording ? 'bg-red-500 text-white animate-pulse' : 'text-gray-400 hover:text-blue-600'
-            }`}
-          >
-            {isSearchVoiceProcessing ? <Loader2 className="animate-spin" size={14} /> : <Mic size={14} />}
-          </button>
-        </div>
-
         {allTags.length > 0 && (
           <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
             <Filter size={10} className="text-gray-400 shrink-0" />
@@ -220,14 +193,38 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
           ))
         )}
       </div>
+      </main>
 
-      {/* 右下角悬浮（相对主界面）：新增客户 */}
-      <button
-        onClick={() => setShowAddForm(true)}
-        className="absolute right-4 bottom-4 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-blue-600 text-white text-[10px] font-bold shadow-lg shadow-blue-200 btn-active-scale"
-      >
-        <Plus size={14} /> {t.add}
-      </button>
+      {/* 底部固定栏：搜索框、语音输入、新增（与记录页一致） */}
+      <div className="fixed left-0 right-0 bottom-16 z-40 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-3 py-2 pb-safe">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
+            <input
+              type="text"
+              placeholder={t.search}
+              className="w-full pl-8 pr-2.5 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-medium focus:ring-1 focus:ring-blue-500 outline-none"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <button
+            onClick={startSearchVoiceInput}
+            disabled={searchRecording || isSearchVoiceProcessing}
+            className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all btn-active-scale ${
+              searchRecording ? 'bg-red-500 text-white' : isSearchVoiceProcessing ? 'bg-gray-400 text-white' : 'bg-gray-100 text-gray-600'
+            }`}
+          >
+            {isSearchVoiceProcessing ? <Loader2 className="animate-spin" size={20} /> : <Mic size={20} />}
+          </button>
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-blue-600 text-white text-[10px] font-bold shadow-lg btn-active-scale"
+          >
+            <Plus size={18} /> {t.add}
+          </button>
+        </div>
+      </div>
 
       {showAddForm && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-end justify-center">

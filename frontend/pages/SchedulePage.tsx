@@ -159,64 +159,14 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
   };
 
   return (
-    <div className="page-transition space-y-5 relative">
-      <header>
+    <div className="page-transition flex flex-col min-h-full relative">
+      <header className="shrink-0">
         <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
         <p className="text-[10px] text-gray-400 font-medium mt-1">{t.subtitle}</p>
       </header>
 
-      <div className="bg-white p-3 rounded-2xl border border-gray-100 soft-shadow">
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="p-2 bg-blue-50 text-blue-500 rounded-xl shrink-0"><Sparkles size={14} /></div>
-            <div className="min-w-0">
-              <h4 className="font-bold text-gray-900 text-[10px] leading-tight">{t.voice_title}</h4>
-              <p className="text-[8px] text-gray-400 truncate">{t.voice_desc}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button 
-              onClick={recording ? stopVoiceInput : startVoiceInput} 
-              disabled={isProcessing}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold btn-active-scale transition-all ${
-                recording ? 'bg-red-500 text-white' : 'bg-blue-600 text-white'
-              }`}
-            >
-              {isProcessing ? <Loader2 className="animate-spin" size={12} /> : recording ? <X size={12} /> : <Mic size={12} />}
-              {recording ? t.recording : isProcessing ? '处理中...' : t.start}
-            </button>
-            <button 
-              onClick={() => setShowAddForm(v => !v)} 
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold btn-active-scale transition-all ${
-                showAddForm ? 'bg-emerald-600 text-white' : 'bg-emerald-500 text-white'
-              }`}
-            >
-              <Plus size={12} />
-              {t.manual}
-            </button>
-          </div>
-        </div>
-        {showAddForm && (
-          <div className="pt-3 border-t border-emerald-100 bg-emerald-50/50 rounded-xl px-1 -mx-1">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-[10px] font-bold text-emerald-700">{t.manual}</span>
-              <button type="button" onClick={() => setShowAddForm(false)} className="text-emerald-600 p-1 rounded hover:bg-emerald-100" aria-label="关闭">
-                <X size={14} />
-              </button>
-            </div>
-            <form onSubmit={(e)=>{e.preventDefault(); onAddSchedule({id:'s-'+Date.now(), ...newSchedule, status:'pending'}); setShowAddForm(false); setNewSchedule({ title: '', date: '', time: '', customerId: '' });}} className="space-y-2.5">
-              <input required placeholder={t.placeholder_title} className="w-full px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" value={newSchedule.title} onChange={e=>setNewSchedule({...newSchedule, title: e.target.value})} />
-              <div className="grid grid-cols-2 gap-2">
-                <input type="date" required className="px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" value={newSchedule.date} onChange={e=>setNewSchedule({...newSchedule, date: e.target.value})} />
-                <input type="time" className="px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" value={newSchedule.time} onChange={e=>setNewSchedule({...newSchedule, time: e.target.value})} />
-              </div>
-              <button type="submit" className="w-full py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-xs btn-active-scale">{t.confirm}</button>
-            </form>
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-2 gap-2.5">
+      <main className="flex-1 overflow-auto pb-44">
+      <div className="grid grid-cols-2 gap-2.5 mt-4">
         <div className="p-2.5 bg-emerald-50 rounded-xl flex items-center justify-between">
           <div className="flex flex-col"><span className="text-[7px] text-emerald-600 font-bold uppercase tracking-widest">{t.completed}</span><span className="text-sm font-bold text-emerald-700 leading-none">{schedules.filter(s=>s.status==='completed').length}</span></div>
           <CheckCircle2 size={14} className="text-emerald-200" />
@@ -250,27 +200,45 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
           ))
         )}
       </div>
+      </main>
 
-      {/* 右下角悬浮（相对主界面）：手动录入、语音录入 */}
-      <div className="absolute right-4 bottom-4 z-40 flex flex-col items-end gap-2">
-        <button
-          onClick={() => setShowAddForm(v => !v)}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-white text-[10px] font-bold shadow-lg btn-active-scale ${
-            showAddForm ? 'bg-emerald-600 shadow-emerald-200' : 'bg-emerald-500 shadow-emerald-200'
-          }`}
-        >
-          <Plus size={14} /> {t.manual}
-        </button>
-        <button
-          onClick={recording ? stopVoiceInput : startVoiceInput}
-          disabled={isProcessing}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-white text-[10px] font-bold shadow-lg btn-active-scale ${
-            recording ? 'bg-red-500 shadow-red-200' : 'bg-blue-600 shadow-blue-200'
-          }`}
-        >
-          {isProcessing ? <Loader2 className="animate-spin" size={14} /> : recording ? <X size={14} /> : <Mic size={14} />}
-          {recording ? t.recording : isProcessing ? '处理中...' : t.start}
-        </button>
+      {/* 底部浮动栏：语音录入、手动录入（与记录页一致） */}
+      <div className="fixed left-0 right-0 bottom-16 z-40 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-3 py-2 pb-safe">
+        {showAddForm && (
+          <div className="mb-3 pt-2 border-t border-emerald-100 bg-emerald-50/50 rounded-xl px-3 pb-3">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-[10px] font-bold text-emerald-700">{t.manual}</span>
+              <button type="button" onClick={() => setShowAddForm(false)} className="text-emerald-600 p-1 rounded hover:bg-emerald-100"><X size={14} /></button>
+            </div>
+            <form onSubmit={(e)=>{e.preventDefault(); onAddSchedule({id:'s-'+Date.now(), ...newSchedule, status:'pending'}); setShowAddForm(false); setNewSchedule({ title: '', date: '', time: '', customerId: '' });}} className="space-y-2.5">
+              <input required placeholder={t.placeholder_title} className="w-full px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" value={newSchedule.title} onChange={e=>setNewSchedule({...newSchedule, title: e.target.value})} />
+              <div className="grid grid-cols-2 gap-2">
+                <input type="date" required className="px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" value={newSchedule.date} onChange={e=>setNewSchedule({...newSchedule, date: e.target.value})} />
+                <input type="time" className="px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" value={newSchedule.time} onChange={e=>setNewSchedule({...newSchedule, time: e.target.value})} />
+              </div>
+              <button type="submit" className="w-full py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-xs btn-active-scale">{t.confirm}</button>
+            </form>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={recording ? stopVoiceInput : startVoiceInput}
+            disabled={isProcessing}
+            className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all btn-active-scale ${
+              recording ? 'bg-red-500 text-white' : isProcessing ? 'bg-gray-400 text-white' : 'bg-blue-600 text-white'
+            }`}
+          >
+            {isProcessing ? <Loader2 className="animate-spin" size={20} /> : recording ? <X size={20} /> : <Mic size={20} />}
+          </button>
+          <button
+            onClick={() => setShowAddForm(v => !v)}
+            className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-full text-white text-[10px] font-bold shadow-lg btn-active-scale ${
+              showAddForm ? 'bg-emerald-600' : 'bg-emerald-500'
+            }`}
+          >
+            <Plus size={18} /> {t.manual}
+          </button>
+        </div>
       </div>
     </div>
   );

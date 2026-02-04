@@ -222,7 +222,7 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
         </div>
       </main>
 
-      {/* 底部 AI 对话式输入栏 */}
+      {/* 底部 AI 对话式输入栏：手动输入在上，按钮行在下 */}
       <div className="fixed left-0 right-0 bottom-16 z-40 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-3 py-2 pb-safe">
         {analyzeError && (
           <p className="text-[10px] text-rose-600 font-medium mb-2 px-1">
@@ -244,8 +244,17 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
             </button>
           </div>
         )}
-        <div className="flex items-end gap-2">
-          {/* 依次：自动匹配客户、上传、录音 */}
+        <textarea
+          className="w-full min-h-[44px] max-h-24 py-2.5 px-3 bg-gray-50 border border-gray-100 rounded-xl text-xs font-medium resize-none focus:ring-1 focus:ring-blue-500 outline-none mb-2"
+          placeholder={t.placeholder}
+          value={input}
+          onChange={(e) => {
+            setInput(e.target.value);
+            setAnalyzeError('');
+          }}
+          rows={2}
+        />
+        <div className="flex items-center gap-2">
           <div className="relative min-w-[100px] min-h-[40px] bg-blue-50/60 rounded-xl flex items-center pl-2 pr-7 py-2 border border-blue-100 shrink-0">
             <UserCheck className="text-blue-500 shrink-0" size={12} />
             <select
@@ -280,23 +289,11 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
           >
             {isTranscribing ? <Loader2 className="animate-spin" size={20} /> : <Mic size={20} />}
           </button>
-          <div className="flex-1 min-w-0">
-            <textarea
-              className="w-full min-h-[40px] max-h-24 py-2.5 px-3 bg-gray-50 border border-gray-100 rounded-xl text-xs font-medium resize-none focus:ring-1 focus:ring-blue-500 outline-none"
-              placeholder={t.placeholder}
-              value={input}
-              onChange={(e) => {
-                setInput(e.target.value);
-                setAnalyzeError('');
-              }}
-              rows={2}
-            />
-          </div>
           <button
             type="button"
             onClick={handleAnalyze}
             disabled={isAnalyzing || !hasContent}
-            className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all btn-active-scale ${
+            className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all btn-active-scale ml-auto ${
               hasContent ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-400'
             }`}
           >
@@ -322,8 +319,8 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
       />
 
       {showLinkModal && (
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-end justify-center">
-          <div className="bg-white rounded-t-3xl w-full max-w-[480px] p-6 pb-10 animate-in slide-in-from-bottom duration-300">
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-end justify-center pb-24">
+          <div className="bg-white rounded-t-3xl w-full max-w-[min(100%,28rem)] p-6 pb-10 animate-in slide-in-from-bottom duration-300 shadow-xl">
             {!showCreateForm ? (
               <div className="space-y-4 text-center">
                 <h3 className="text-sm font-bold">{t.link_profile_title}</h3>
