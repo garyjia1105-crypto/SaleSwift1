@@ -202,8 +202,9 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
       </div>
       </main>
 
-      {/* 底部浮动栏：语音录入、手动录入（与记录页一致） */}
-      <div className="fixed left-0 right-0 bottom-16 z-40 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-3 py-2 pb-safe">
+      {/* 底部浮动栏：语音录入、手动录入；宽度限制与主区一致 */}
+      <div className="fixed left-0 right-0 bottom-16 z-40 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] py-2 pb-safe">
+        <div className="w-full max-w-2xl mx-auto px-3">
         {showAddForm && (
           <div className="mb-3 pt-2 border-t border-emerald-100 bg-emerald-50/50 rounded-xl px-3 pb-3">
             <div className="flex justify-between items-center mb-2">
@@ -238,6 +239,7 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
           >
             <Plus size={18} /> {t.manual}
           </button>
+        </div>
         </div>
       </div>
     </div>

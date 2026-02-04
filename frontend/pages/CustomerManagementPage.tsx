@@ -195,8 +195,9 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
       </div>
       </main>
 
-      {/* 底部固定栏：搜索框、语音输入、新增（与记录页一致） */}
-      <div className="fixed left-0 right-0 bottom-16 z-40 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-3 py-2 pb-safe">
+      {/* 底部固定栏：搜索框、语音输入、新增；宽度限制与主区一致 */}
+      <div className="fixed left-0 right-0 bottom-16 z-40 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] py-2 pb-safe">
+        <div className="w-full max-w-2xl mx-auto px-3">
         <div className="flex items-center gap-2">
           <div className="relative flex-1 min-w-0">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
@@ -223,6 +224,7 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
           >
             <Plus size={18} /> {t.add}
           </button>
+        </div>
         </div>
       </div>
 
