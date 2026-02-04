@@ -260,7 +260,8 @@ const App: React.FC = () => {
 
   return (
     <div className={`flex flex-col min-h-screen items-center justify-center transition-colors duration-500 ${themeStyles.bg}`}>
-      <div className={`w-full max-w-[480px] h-screen md:h-[90vh] md:max-h-[850px] overflow-hidden flex flex-col relative md:rounded-[32px] md:shadow-2xl border ${themeStyles.border} ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-white'}`}>
+      {/* transform 使内部 fixed 元素相对于本卡片定位，底部栏宽度/位置与卡片一致 */}
+<div className={`w-full max-w-[480px] h-screen md:h-[90vh] md:max-h-[850px] overflow-hidden flex flex-col relative md:rounded-[32px] md:shadow-2xl border ${themeStyles.border} ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-white'} [transform:translateZ(0)]`}>
         
         {isLoggedIn && (
           <header className={`px-5 py-3.5 flex items-center justify-between border-b ${themeStyles.border} ${themeStyles.headerBg} shrink-0 z-10`}>
