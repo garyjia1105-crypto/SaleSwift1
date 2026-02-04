@@ -182,14 +182,15 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
   };
 
   return (
-    <div className="page-transition flex flex-col min-h-full relative">
-      <header className="shrink-0 px-1 pt-1 pb-2">
-        <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
-        <p className="text-[10px] text-gray-400 font-medium mt-1">{t.subtitle}</p>
-      </header>
+    <div className="flex flex-col min-h-full relative">
+      <div className="page-transition flex flex-col flex-1 min-h-0">
+        <header className="shrink-0 px-1 pt-1 pb-2">
+          <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
+          <p className="text-[10px] text-gray-400 font-medium mt-1">{t.subtitle}</p>
+        </header>
 
-      {/* 主区：仅复盘记录列表 */}
-      <main className="flex-1 overflow-auto pb-44">
+        {/* 主区：仅复盘记录列表 */}
+        <main className="flex-1 overflow-auto pb-44">
         <div className="flex justify-between items-center px-1 mb-3">
           <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{t.recent_records}</h3>
           <Link to="/history" className="text-[9px] font-bold text-blue-600">
@@ -221,8 +222,9 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
           )}
         </div>
       </main>
+      </div>
 
-      {/* 底部输入栏：相对于 App 内卡片定位，与卡片同宽 */}
+      {/* 底部输入栏：不放在 page-transition 内，避免 transform 导致首帧错位 */}
       <div className="fixed left-0 right-0 bottom-16 z-40 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] py-2 pb-safe px-3">
         {analyzeError && (
           <p className="text-[10px] text-rose-600 font-medium mb-2 px-1">

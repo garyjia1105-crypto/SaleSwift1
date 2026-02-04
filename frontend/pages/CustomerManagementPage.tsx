@@ -106,13 +106,14 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
   });
 
   return (
-    <div className="page-transition flex flex-col min-h-full relative animate-in fade-in duration-500">
-      <header className="shrink-0">
-        <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
-        <p className="text-[10px] text-gray-500 font-medium mt-1">{t.subtitle}</p>
-      </header>
+    <div className="flex flex-col min-h-full relative">
+      <div className="page-transition flex flex-col flex-1 min-h-0 animate-in fade-in duration-500">
+        <header className="shrink-0">
+          <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
+          <p className="text-[10px] text-gray-500 font-medium mt-1">{t.subtitle}</p>
+        </header>
 
-      <main className="flex-1 overflow-auto pb-44 space-y-4">
+        <main className="flex-1 overflow-auto pb-44 space-y-4">
       <div className="p-4 rounded-2xl border border-gray-100 soft-shadow bg-white">
         <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-4">{t.funnel}</h3>
         <div className="h-[140px] w-full min-w-0">
@@ -194,8 +195,9 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
         )}
       </div>
       </main>
+      </div>
 
-      {/* 底部固定栏：相对于 App 内卡片定位，与卡片同宽 */}
+      {/* 底部固定栏：不放在 page-transition 内，避免 transform 导致首帧错位 */}
       <div className="fixed left-0 right-0 bottom-16 z-40 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] py-2 pb-safe px-3">
         <div className="flex items-center gap-2">
           <div className="relative flex-1 min-w-0">

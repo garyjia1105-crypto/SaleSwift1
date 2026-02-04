@@ -159,13 +159,14 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
   };
 
   return (
-    <div className="page-transition flex flex-col min-h-full relative">
-      <header className="shrink-0">
-        <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
-        <p className="text-[10px] text-gray-400 font-medium mt-1">{t.subtitle}</p>
-      </header>
+    <div className="flex flex-col min-h-full relative">
+      <div className="page-transition flex flex-col flex-1 min-h-0">
+        <header className="shrink-0">
+          <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
+          <p className="text-[10px] text-gray-400 font-medium mt-1">{t.subtitle}</p>
+        </header>
 
-      <main className="flex-1 overflow-auto pb-44">
+        <main className="flex-1 overflow-auto pb-44">
       <div className="grid grid-cols-2 gap-2.5 mt-4">
         <div className="p-2.5 bg-emerald-50 rounded-xl flex items-center justify-between">
           <div className="flex flex-col"><span className="text-[7px] text-emerald-600 font-bold uppercase tracking-widest">{t.completed}</span><span className="text-sm font-bold text-emerald-700 leading-none">{schedules.filter(s=>s.status==='completed').length}</span></div>
@@ -201,8 +202,9 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
         )}
       </div>
       </main>
+      </div>
 
-      {/* 底部浮动栏：相对于 App 内卡片定位，与卡片同宽 */}
+      {/* 底部浮动栏：不放在 page-transition 内，避免 transform 导致首帧错位 */}
       <div className="fixed left-0 right-0 bottom-16 z-40 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] py-2 pb-safe px-3">
         {showAddForm && (
           <div className="mb-3 pt-2 border-t border-emerald-100 bg-emerald-50/50 rounded-xl px-3 pb-3">
