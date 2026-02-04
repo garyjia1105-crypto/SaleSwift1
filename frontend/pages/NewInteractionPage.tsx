@@ -222,9 +222,8 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
         </div>
       </main>
 
-      {/* 底部 AI 对话式输入栏：手动输入在上，按钮行在下；宽度限制与主区一致 */}
-      <div className="fixed left-0 right-0 bottom-16 z-40 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] py-2 pb-safe">
-        <div className="w-full max-w-2xl mx-auto px-3">
+      {/* 底部 AI 对话式输入栏：窄屏全宽，宽屏最大 672px 居中 */}
+      <div className="fixed left-1/2 -translate-x-1/2 bottom-16 z-40 w-full max-w-2xl bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] py-2 pb-safe px-3">
         {analyzeError && (
           <p className="text-[10px] text-rose-600 font-medium mb-2 px-1">
             {analyzeError.includes('AI quota exceeded') || analyzeError.includes('Try again later')
@@ -300,7 +299,6 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
           >
             {isAnalyzing ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={20} />}
           </button>
-        </div>
         </div>
       </div>
 
