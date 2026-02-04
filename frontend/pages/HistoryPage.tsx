@@ -140,8 +140,8 @@ const HistoryPage: React.FC<{ interactions: Interaction[]; lang: Language }> = (
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <header>
-        <h2 className="text-3xl font-bold text-gray-900">{t.title}</h2>
-        <p className="text-gray-500 mt-1">{t.subtitle}</p>
+        <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
+        <p className="text-[10px] text-gray-500 font-medium mt-1">{t.subtitle}</p>
       </header>
 
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between">

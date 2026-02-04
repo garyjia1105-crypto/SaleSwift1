@@ -17,8 +17,8 @@ const GrowthPage: React.FC<{ interactions: Interaction[] }> = ({ interactions })
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <header>
-        <h2 className="text-3xl font-bold text-gray-900">您的销售成长</h2>
-        <p className="text-gray-500 mt-1">追踪您的技能进阶和转化率优化成果。</p>
+        <h2 className="text-base font-bold text-gray-900 leading-none">您的销售成长</h2>
+        <p className="text-[10px] text-gray-500 font-medium mt-1">追踪您的技能进阶和转化率优化成果。</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
-  LayoutDashboard, 
   PlusCircle, 
   Users,
   Zap,
@@ -308,7 +307,7 @@ const App: React.FC = () => {
               <Route path="/new" element={<NewInteractionPage onSave={saveInteraction} customers={customers} interactions={interactions} onAddCustomer={addCustomer} lang={language} />} />
               <Route path="/dashboard" element={<DashboardPage interactions={interactions} customers={customers} schedules={schedules} user={user} lang={language} theme={theme} />} />
               <Route path="/schedules" element={<SchedulePage schedules={schedules} customers={customers} onAddSchedule={addSchedule} onToggleStatus={toggleScheduleStatus} lang={language} />} />
-              <Route path="/customers" element={<CustomerManagementPage customers={customers} onSync={saveCustomers} onAdd={addCustomer} lang={language} />} />
+              <Route path="/customers" element={<CustomerManagementPage customers={customers} interactions={interactions} onSync={saveCustomers} onAdd={addCustomer} lang={language} />} />
               <Route path="/customers/:id" element={<CustomerDetailPage customers={customers} interactions={interactions} schedules={schedules} coursePlans={coursePlans} onSaveCoursePlan={saveCoursePlan} onAddSchedule={addSchedule} onUpdateCustomer={updateCustomer} lang={language} />} />
               <Route path="/roleplay/:customerId" element={<RolePlayPage customers={customers} interactions={interactions} lang={language} />} />
               <Route path="/history" element={<HistoryPage interactions={interactions} lang={language} />} />
@@ -341,7 +340,6 @@ const App: React.FC = () => {
             <MobileNavItem icon={<PlusCircle />} label={t.nav.new} to="/" active={isActive('/') || isActive('/new')} theme={theme} />
             <MobileNavItem icon={<CalendarDays />} label={t.nav.schedule} to="/schedules" active={isActive('/schedules')} theme={theme} />
             <MobileNavItem icon={<Users />} label={t.nav.customers} to="/customers" active={location.pathname.startsWith('/customers')} theme={theme} />
-            <MobileNavItem icon={<LayoutDashboard />} label={t.nav.dashboard} to="/dashboard" active={isActive('/dashboard')} theme={theme} />
           </nav>
         )}
       </div>

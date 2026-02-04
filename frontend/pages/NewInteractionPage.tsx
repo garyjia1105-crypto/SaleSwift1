@@ -211,8 +211,8 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
   return (
     <div className="page-transition space-y-6 pb-12">
       <header className="text-center">
-        <h2 className="text-base font-bold text-gray-900 leading-tight">{t.title}</h2>
-        <p className="text-[10px] text-gray-400 font-medium">{t.subtitle}</p>
+        <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
+        <p className="text-[10px] text-gray-400 font-medium mt-1">{t.subtitle}</p>
       </header>
 
       <div className="flex flex-col items-center gap-6">

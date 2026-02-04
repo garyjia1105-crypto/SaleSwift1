@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Customer } from '../types';
+import { Customer, Interaction, SalesStage } from '../types';
 import { 
   Search, 
   Plus, 
@@ -16,18 +16,57 @@ import {
   Filter
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { extractSearchKeywords } from '../services/aiService';
 import { translations, Language } from '../translations';
 
+/** 将复盘返回的阶段文案归一化为 SalesStage 枚举 */
+function normalizeStage(stage: string | undefined): SalesStage {
+  if (!stage || typeof stage !== 'string') return SalesStage.PROSPECTING;
+  const s = stage.trim();
+  const values = Object.values(SalesStage) as string[];
+  if (values.includes(s)) return s as SalesStage;
+  if (s.includes('潜在') || s.includes('意向')) return SalesStage.PROSPECTING;
+  if (s.includes('需求') || s.includes('确认')) return SalesStage.QUALIFICATION;
+  if (s.includes('方案') || s.includes('报价')) return SalesStage.PROPOSAL;
+  if (s.includes('谈判') || s.includes('商务')) return SalesStage.NEGOTIATION;
+  if (s.includes('赢单') || s.includes('结案')) return SalesStage.CLOSED_WON;
+  if (s.includes('丢单')) return SalesStage.CLOSED_LOST;
+  return SalesStage.PROSPECTING;
+}
+
 interface Props {
   customers: Customer[];
+  interactions: Interaction[];
   onSync: (customers: Customer[]) => void;
   onAdd: (customer: Customer) => void;
   lang: Language;
 }
 
-const CustomerManagementPage: React.FC<Props> = ({ customers, onSync, onAdd, lang }) => {
+const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSync, onAdd, lang }) => {
   const t = translations[lang].customers;
+
+  const customerStageCounts = useMemo(() => {
+    const stageToCount: Record<SalesStage, number> = Object.values(SalesStage).reduce(
+      (acc, stage) => ({ ...acc, [stage]: 0 }),
+      {} as Record<SalesStage, number>
+    );
+    const sortedByDate = [...interactions].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    for (const customer of customers) {
+      const latestForCustomer = sortedByDate.find(i => i.customerId === customer.id);
+      const stage = latestForCustomer
+        ? normalizeStage(latestForCustomer.intelligence?.currentStage as string | undefined)
+        : SalesStage.PROSPECTING;
+      stageToCount[stage] = (stageToCount[stage] ?? 0) + 1;
+    }
+    return stageToCount;
+  }, [customers, interactions]);
+  const stageData = Object.values(SalesStage).map(stage => ({
+    name: stage.slice(0, 2),
+    count: customerStageCounts[stage] ?? 0
+  }));
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -70,8 +109,8 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, onSync, onAdd, lan
     <div className="space-y-5 animate-in fade-in duration-500">
       <header className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">{t.title}</h2>
-          <p className="text-[10px] text-gray-500 font-medium">{t.subtitle}</p>
+          <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
+          <p className="text-[10px] text-gray-500 font-medium mt-1">{t.subtitle}</p>
         </div>
         <button 
           onClick={() => setShowAddForm(true)}
@@ -80,6 +119,27 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, onSync, onAdd, lan
           <Plus size={12} /> {t.add}
         </button>
       </header>
+
+      <div className="p-4 rounded-2xl border border-gray-100 soft-shadow bg-white">
+        <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-4">{t.funnel}</h3>
+        <div className="h-[140px] w-full min-w-0">
+          {customers.length > 0 ? (
+            <ResponsiveContainer width="100%" height={140} minHeight={100}>
+              <BarChart data={stageData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 8, fill: '#94a3b8' }} />
+                <YAxis hide domain={[0, 'auto']} />
+                <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', fontSize: '10px' }} formatter={(value: number) => [value, '客户数']} />
+                <Bar dataKey="count" radius={[2, 2, 0, 0]} fill="#3b82f6" minPointSize={2} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-full flex items-center justify-center rounded-lg bg-gray-50">
+              <p className="text-[10px] text-gray-400 font-medium">{t.funnel_empty}</p>
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="space-y-3">
         <div className="relative group">

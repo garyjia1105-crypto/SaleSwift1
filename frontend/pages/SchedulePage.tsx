@@ -162,7 +162,7 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
     <div className="page-transition space-y-5">
       <header>
         <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
-        <p className="text-[9px] text-gray-400 font-medium mt-1">{t.subtitle}</p>
+        <p className="text-[10px] text-gray-400 font-medium mt-1">{t.subtitle}</p>
       </header>
 
       <div className="bg-white p-3 rounded-2xl border border-gray-100 soft-shadow">

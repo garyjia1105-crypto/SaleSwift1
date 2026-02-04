@@ -134,10 +134,10 @@ const ProfilePage: React.FC<Props> = ({
           </div>
           <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleAvatarChange} />
         </div>
-        <h2 className={`text-lg font-bold leading-none ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+        <h2 className={`text-base font-bold leading-none ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           {user?.displayName || user?.email || '—'}
         </h2>
-        <p className={`text-[10px] mt-2 font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${
+        <p className={`text-[10px] mt-1 font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${
           theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-400'
         }`}>
           {user?.email || ''}
