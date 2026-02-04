@@ -360,6 +360,30 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
         }
       }} />
 
+      {/* 右下角悬浮：生成 AI 报告（有内容时）、录音/停止 */}
+      <div className="fixed right-4 bottom-20 z-40 flex flex-col items-end gap-2">
+        {hasContent && (
+          <button
+            onClick={handleAnalyze}
+            disabled={isAnalyzing}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-blue-600 text-white text-[10px] font-bold shadow-lg shadow-blue-200 btn-active-scale disabled:opacity-70"
+          >
+            {isAnalyzing ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />}
+            {isAnalyzing ? t.analyzing : t.analyze}
+          </button>
+        )}
+        <button
+          onClick={recording ? stopRecording : startRecording}
+          disabled={isTranscribing}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-white text-[10px] font-bold shadow-lg btn-active-scale ${
+            recording ? 'bg-red-500 shadow-red-200' : isTranscribing ? 'bg-gray-400' : 'bg-blue-600 shadow-blue-200'
+          }`}
+        >
+          {isTranscribing ? <Loader2 className="animate-spin" size={14} /> : recording ? <X size={14} /> : <Mic size={14} />}
+          {isTranscribing ? '转写中...' : recording ? t.stop : t.record}
+        </button>
+      </div>
+
       {showLinkModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-end justify-center">
           <div className="bg-white rounded-t-3xl w-full max-w-[480px] p-6 pb-10 animate-in slide-in-from-bottom duration-300">

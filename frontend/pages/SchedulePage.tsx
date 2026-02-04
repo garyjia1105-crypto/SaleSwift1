@@ -251,6 +251,27 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
         )}
       </div>
 
+      {/* 右下角悬浮：手动录入、语音录入 */}
+      <div className="fixed right-4 bottom-20 z-40 flex flex-col items-end gap-2">
+        <button
+          onClick={() => setShowAddForm(v => !v)}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-white text-[10px] font-bold shadow-lg btn-active-scale ${
+            showAddForm ? 'bg-emerald-600 shadow-emerald-200' : 'bg-emerald-500 shadow-emerald-200'
+          }`}
+        >
+          <Plus size={14} /> {t.manual}
+        </button>
+        <button
+          onClick={recording ? stopVoiceInput : startVoiceInput}
+          disabled={isProcessing}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-white text-[10px] font-bold shadow-lg btn-active-scale ${
+            recording ? 'bg-red-500 shadow-red-200' : 'bg-blue-600 shadow-blue-200'
+          }`}
+        >
+          {isProcessing ? <Loader2 className="animate-spin" size={14} /> : recording ? <X size={14} /> : <Mic size={14} />}
+          {recording ? t.recording : isProcessing ? '处理中...' : t.start}
+        </button>
+      </div>
     </div>
   );
 };

@@ -221,6 +221,14 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
         )}
       </div>
 
+      {/* 右下角悬浮：新增客户 */}
+      <button
+        onClick={() => setShowAddForm(true)}
+        className="fixed right-4 bottom-20 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-blue-600 text-white text-[10px] font-bold shadow-lg shadow-blue-200 btn-active-scale"
+      >
+        <Plus size={14} /> {t.add}
+      </button>
+
       {showAddForm && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-end justify-center">
           <div className="bg-white rounded-t-3xl w-full max-w-[480px] p-6 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-200">
