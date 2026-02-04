@@ -162,8 +162,8 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, onSync, onAdd, lan
       </div>
 
       {showAddForm && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end">
-          <div className="bg-white rounded-t-3xl w-full p-6 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-200">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-end justify-center">
+          <div className="bg-white rounded-t-3xl w-full max-w-[480px] p-6 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-200">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-sm font-bold">{t.manual_title}</h3>
               <button onClick={() => setShowAddForm(false)} className="text-gray-400 p-1"><X size={18} /></button>

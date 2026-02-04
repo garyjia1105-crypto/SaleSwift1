@@ -4,7 +4,6 @@ import { HashRouter as Router, Routes, Route, Link, useLocation, useNavigate } f
 import { 
   LayoutDashboard, 
   PlusCircle, 
-  User, 
   Users,
   Zap,
   CalendarDays
@@ -340,10 +339,9 @@ const App: React.FC = () => {
         {isLoggedIn && (
           <nav className={`absolute bottom-0 left-0 right-0 ${theme === 'dark' ? 'bg-gray-800/90 border-gray-700 shadow-none' : 'bg-white/90 shadow-[0_-8px_30px_rgb(0,0,0,0.03)] border-gray-100'} backdrop-blur-md border-t px-2 py-2 flex items-center justify-around z-50 pb-safe`}>
             <MobileNavItem icon={<PlusCircle />} label={t.nav.new} to="/" active={isActive('/') || isActive('/new')} theme={theme} />
-            <MobileNavItem icon={<LayoutDashboard />} label={t.nav.dashboard} to="/dashboard" active={isActive('/dashboard')} theme={theme} />
             <MobileNavItem icon={<CalendarDays />} label={t.nav.schedule} to="/schedules" active={isActive('/schedules')} theme={theme} />
             <MobileNavItem icon={<Users />} label={t.nav.customers} to="/customers" active={location.pathname.startsWith('/customers')} theme={theme} />
-            <MobileNavItem icon={<User />} label={t.nav.me} to="/profile" active={isActive('/profile')} theme={theme} />
+            <MobileNavItem icon={<LayoutDashboard />} label={t.nav.dashboard} to="/dashboard" active={isActive('/dashboard')} theme={theme} />
           </nav>
         )}
       </div>

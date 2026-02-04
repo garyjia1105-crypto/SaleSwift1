@@ -44,13 +44,48 @@ interface Props {
   theme: Theme;
 }
 
+/** 将复盘返回的阶段文案归一化为 SalesStage 枚举（AI 可能返回略有差异的字符串） */
+function normalizeStage(stage: string | undefined): SalesStage {
+  if (!stage || typeof stage !== 'string') return SalesStage.PROSPECTING;
+  const s = stage.trim();
+  const values = Object.values(SalesStage) as string[];
+  if (values.includes(s)) return s as SalesStage;
+  // 模糊匹配：包含关键词则归入对应阶段
+  if (s.includes('潜在') || s.includes('意向')) return SalesStage.PROSPECTING;
+  if (s.includes('需求') || s.includes('确认')) return SalesStage.QUALIFICATION;
+  if (s.includes('方案') || s.includes('报价')) return SalesStage.PROPOSAL;
+  if (s.includes('谈判') || s.includes('商务')) return SalesStage.NEGOTIATION;
+  if (s.includes('赢单') || s.includes('结案')) return SalesStage.CLOSED_WON;
+  if (s.includes('丢单')) return SalesStage.CLOSED_LOST;
+  return SalesStage.PROSPECTING;
+}
+
 const DashboardPage: React.FC<Props> = ({ interactions, customers, schedules, user, lang, theme }) => {
   const t = (translations[lang] ?? translations.zh).dashboard;
   const isDark = theme === 'dark';
   const recentInteractions = interactions.slice(0, 3);
+
+  // 按客户关联漏斗：每个客户的“当前阶段”取该客户最近一次复盘的阶段，无复盘则归为潜在客户
+  const customerStageCounts = (() => {
+    const stageToCount: Record<SalesStage, number> = Object.values(SalesStage).reduce(
+      (acc, stage) => ({ ...acc, [stage]: 0 }),
+      {} as Record<SalesStage, number>
+    );
+    const sortedByDate = [...interactions].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    for (const customer of customers) {
+      const latestForCustomer = sortedByDate.find(i => i.customerId === customer.id);
+      const stage = latestForCustomer
+        ? normalizeStage(latestForCustomer.intelligence?.currentStage as string | undefined)
+        : SalesStage.PROSPECTING;
+      stageToCount[stage] = (stageToCount[stage] ?? 0) + 1;
+    }
+    return stageToCount;
+  })();
   const stageData = Object.values(SalesStage).map(stage => ({
-    name: stage.slice(0, 2), 
-    count: interactions.filter(i => i.intelligence?.currentStage === stage).length
+    name: stage.slice(0, 2),
+    count: customerStageCounts[stage] ?? 0
   }));
   const pendingCount = schedules.filter(s => s.status === 'pending').length;
 
@@ -85,13 +120,13 @@ const DashboardPage: React.FC<Props> = ({ interactions, customers, schedules, us
       <div className={`p-4 rounded-2xl border soft-shadow ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}>
         <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-4">{t.funnel}</h3>
         <div className="h-[160px] w-full min-w-0">
-          {interactions.length > 0 ? (
+          {customers.length > 0 ? (
             <ResponsiveContainer width="100%" height={160} minHeight={120}>
               <BarChart data={stageData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? "#374151" : "#f1f5f9"} />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 8, fill: '#94a3b8' }} />
                 <YAxis hide domain={[0, 'auto']} />
-                <Tooltip cursor={{ fill: isDark ? '#1f2937' : '#f8fafc' }} contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: isDark ? '#111827' : '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', fontSize: '10px' }} />
+                <Tooltip cursor={{ fill: isDark ? '#1f2937' : '#f8fafc' }} contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: isDark ? '#111827' : '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', fontSize: '10px' }} formatter={(value: number) => [value, '客户数']} />
                 <Bar dataKey="count" radius={[2, 2, 0, 0]} fill={barColor} minPointSize={2} />
               </BarChart>
             </ResponsiveContainer>
