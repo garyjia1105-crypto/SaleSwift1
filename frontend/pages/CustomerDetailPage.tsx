@@ -176,9 +176,12 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
           </div>
           <button 
             onClick={() => {
-              if (isEditingContact) handleSaveContact();
-              else setEditForm({ name: customer.name, email: customer.email || '', phone: customer.phone || '', company: customer.company || '', role: customer.role || '' });
-              setIsEditingContact(v => !v);
+              if (isEditingContact) {
+                handleSaveContact();
+              } else {
+                setEditForm({ name: customer.name, email: customer.email || '', phone: customer.phone || '', company: customer.company || '', role: customer.role || '' });
+                setIsEditingContact(true);
+              }
             }}
             className={`p-1.5 rounded-lg transition-all ${isEditingContact ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-50 text-gray-400'}`}
           >
