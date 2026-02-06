@@ -2,7 +2,7 @@
 export const translations = {
   zh: {
     nav: { dashboard: "看板", new: "记录", schedule: "日程", customers: "客户", me: "我的" },
-    header: { title: "SaleSwift", subtitle: "智能销售副驾驶" },
+    header: { title: "SaleSwift AI", subtitle: "智能销售副驾驶" },
     dashboard: { welcome: "早上好", deals: "个活跃商机待跟进", active_customers: "活跃客户", probability: "成交概率", pipeline: "管线额度", follow_up: "跟进周期", funnel: "销售阶段漏斗", funnel_empty: "添加互动后显示漏斗", recent: "最近复盘", all: "全部", start_recording: "在下方开始记录" },
     new: { title: "客户互动复盘", subtitle: "整理今日访谈，沉淀销售情报", record: "录音", stop: "停止", placeholder: "粘贴访谈摘要或手动输入访谈内容...", analyze: "生成 AI 结构化报告", analyzing: "正在深度分析...", upload: "上传文件", change_file: "更换文件", match_customer: "自动匹配客户", recent_records: "最近复盘记录", link_profile_title: "关联客户档案", cancel: "取消", new_client: "新建客户", create_new_client: "新建客户", name_placeholder: "姓名", company_placeholder: "公司", confirm_review: "确认并查看", saving: "保存中..." },
     profile: { title: "个人中心", logout: "登出当前账户", settings: "账号设置", language: "语言设置", notifications: "消息提醒", security: "安全与隐私", avatar: "更换头像", theme: "界面风格", theme_classic: "经典蓝", theme_dark: "极客黑", theme_minimal: "清冷灰", theme_nature: "森林绿", ai_config: "AI 引擎配置", api_key_label: "自定义 API Key", api_key_placeholder: "粘贴 Google Gemini API Key...", model_select: "模型选择", model_flash: "Gemini 3 Flash", model_flash_desc: "速度快，延迟低", model_pro: "Gemini 3 Pro", model_pro_desc: "推理强，更智能" },
@@ -21,7 +21,7 @@ export const translations = {
   },
   en: {
     nav: { dashboard: "Board", new: "Record", schedule: "Plan", customers: "Clients", me: "Me" },
-    header: { title: "SaleSwift", subtitle: "AI Sales Copilot" },
+    header: { title: "SaleSwift AI", subtitle: "AI Sales Copilot" },
     dashboard: { welcome: "Good Morning", deals: "active deals to follow up", active_customers: "Active Clients", probability: "Win Prob.", pipeline: "Pipeline", follow_up: "Cycle", funnel: "Sales Funnel", funnel_empty: "Add interactions to see funnel", recent: "Recent Reviews", all: "All", start_recording: "Start recording below" },
     new: { title: "Meeting Review", subtitle: "Organize today's talk into intelligence", record: "Rec", stop: "Stop", placeholder: "Paste interview summary or type interview content...", analyze: "Generate AI Report", analyzing: "Analyzing...", upload: "Upload", change_file: "Change", match_customer: "Match Client", recent_records: "Recent Interactions", link_profile_title: "Link Customer Profile", cancel: "Cancel", new_client: "New Client", create_new_client: "Create New Client", name_placeholder: "Name", company_placeholder: "Company", confirm_review: "Confirm & Review", saving: "Saving..." },
     profile: { title: "Profile", logout: "Logout Account", settings: "Account Settings", language: "Language", notifications: "Notifications", security: "Security", avatar: "Change Avatar", theme: "Theme Style", theme_classic: "Classic", theme_dark: "Midnight", theme_minimal: "Minimal", theme_nature: "Nature", ai_config: "AI Configuration", api_key_label: "Custom API Key", api_key_placeholder: "Paste Gemini API Key...", model_select: "Model Selection", model_flash: "Gemini 3 Flash", model_flash_desc: "Fast & Efficient", model_pro: "Gemini 3 Pro", model_pro_desc: "Deep Reasoning" },
@@ -40,7 +40,7 @@ export const translations = {
   },
   ja: {
     nav: { dashboard: "ボード", new: "记录", schedule: "予定", customers: "顧客", me: "マイ" },
-    header: { title: "SaleSwift", subtitle: "AI セールスコパイロット" },
+    header: { title: "SaleSwift AI", subtitle: "AI セールスコパイロット" },
     dashboard: { welcome: "おはようございます", deals: "件の商談が進行中", active_customers: "有効顧客", probability: "成约率", pipeline: "パイプライン", follow_up: "サイクル", funnel: "販売ファンネル", funnel_empty: "インタラクションを追加すると表示されます", recent: "最近のレビュー", all: "すべて", start_recording: "以下で記録を開始" },
     new: { title: "商談レビュー", subtitle: "今日の面談を情報資産に", record: "録音", stop: "停止", placeholder: "インタビュー要約を貼り付けるか、インタビュー内容を入力してください...", analyze: "AIレポート作成", analyzing: "分析中...", upload: "アップロード", change_file: "変更", match_customer: "顧客を照合", recent_records: "最近の履歴", link_profile_title: "顧客プロフィールをリンク", cancel: "キャンセル", new_client: "新規顧客", create_new_client: "新規顧客作成", name_placeholder: "名前", company_placeholder: "会社", confirm_review: "確認して表示", saving: "保存中..." },
     profile: { title: "プロフィール", logout: "ログアウト", settings: "アカウント設定", language: "言語設定", notifications: "通知設定", security: "セキュリティ", avatar: "写真を変更", theme: "テーマ", theme_classic: "クラシック", theme_dark: "ダーク", theme_minimal: "ミニマル", theme_nature: "ネイチャー", ai_config: "AI 設定", api_key_label: "カスタム API Key", api_key_placeholder: "APIキーを貼り付け...", model_select: "モデル选择", model_flash: "Gemini 3 Flash", model_flash_desc: "高速・低遅延", model_pro: "Gemini 3 Pro", model_pro_desc: "高度な推论" },
@@ -59,7 +59,7 @@ export const translations = {
   },
   ko: {
     nav: { dashboard: "보드", new: "기록", schedule: "일정", customers: "고객", me: "내 정보" },
-    header: { title: "SaleSwift", subtitle: "AI 영업 부조종사" },
+    header: { title: "SaleSwift AI", subtitle: "AI 영업 부조종사" },
     dashboard: { welcome: "좋은 아침입니다", deals: "개의 활성 딜 진행 중", active_customers: "활성 고객", probability: "성공 확률", pipeline: "파이프라인", follow_up: "주기", funnel: "영업 퍼널", funnel_empty: "상호작용 추가 시 표시됨", recent: "최근 리뷰", all: "전체", start_recording: "아래에서 기록 시작" },
     new: { title: "미팅 리뷰", subtitle: "오늘의 대화를 영업 정보로", record: "녹음", stop: "중지", placeholder: "인터뷰 요약을 붙여넣거나 인터뷰 내용을 입력하세요...", analyze: "AI 리포트 생성", analyzing: "분석 중...", upload: "업로드", change_file: "변경", match_customer: "고객 매칭", recent_records: "최근 활동 내역", link_profile_title: "고객 프로필 연결", cancel: "취소", new_client: "신규 고객", create_new_client: "신규 고객 생성", name_placeholder: "이름", company_placeholder: "회사", confirm_review: "확인 및 보기", saving: "저장 중..." },
     profile: { title: "프로필", logout: "로그아웃", settings: "계정 설정", language: "언어 설정", notifications: "알림 설정", security: "보안", avatar: "아바타 변경", theme: "테마 스타일", theme_classic: "클래식", theme_dark: "다크", theme_minimal: "미니멀", theme_nature: "네이처", ai_config: "AI 설정", api_key_label: "사용자 API Key", api_key_placeholder: "API Key 붙여넣기...", model_select: "모델 선택", model_flash: "Gemini 3 Flash", model_flash_desc: "빠르고 효율적", model_pro: "Gemini 3 Pro", model_pro_desc: "심층 추론" },

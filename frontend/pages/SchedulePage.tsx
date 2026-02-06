@@ -222,12 +222,12 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
             </form>
           </div>
         )}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2">
           <button
             onClick={recording ? stopVoiceInput : startVoiceInput}
             disabled={isProcessing}
             className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all btn-active-scale ${
-              recording ? 'bg-red-500 text-white' : isProcessing ? 'bg-gray-400 text-white' : 'bg-blue-600 text-white'
+              recording ? 'bg-red-500 text-white' : isProcessing ? 'bg-gray-400 text-white' : 'bg-gray-100 text-gray-600'
             }`}
           >
             {isProcessing ? <Loader2 className="animate-spin" size={20} /> : recording ? <X size={20} /> : <Mic size={20} />}

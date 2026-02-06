@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from '@google/genai';
 
-const getAI = () => {
-  const key = process.env.GEMINI_API_KEY;
+const getAI = (customApiKey?: string) => {
+  const key = customApiKey?.trim() || process.env.GEMINI_API_KEY;
   if (!key) throw new Error('GEMINI_API_KEY not set');
   const baseUrl = process.env.GEMINI_BASE_URL?.trim();
   const opts: { apiKey: string; httpOptions?: { baseUrl: string } } = { apiKey: key };
@@ -68,8 +68,8 @@ export async function rolePlayInit(customer: {
   name: string;
   role: string;
   company: string;
-}, context: string): Promise<string> {
-  const ai = getAI();
+}, context: string, customApiKey?: string): Promise<string> {
+  const ai = getAI(customApiKey);
   const model = getModel('flash');
   const systemInstruction = ROLE_PLAY_SYSTEM(customer) + '\n开始时请主动发起一段话，说明你现在的状态。';
   const response = await ai.models.generateContent({
@@ -84,9 +84,10 @@ export async function rolePlayMessage(
   customer: { name: string; role: string; company: string },
   _context: string,
   history: { role: string; text: string }[],
-  message: string
+  message: string,
+  customApiKey?: string
 ): Promise<string> {
-  const ai = getAI();
+  const ai = getAI(customApiKey);
   const model = getModel('flash');
   const systemInstruction = ROLE_PLAY_SYSTEM(customer);
   
@@ -120,9 +121,10 @@ export async function rolePlayMessage(
 
 export async function deepDiveIntoInterest(
   interest: string,
-  customer: { name: string; role: string; company: string }
+  customer: { name: string; role: string; company: string },
+  customApiKey?: string
 ): Promise<string> {
-  const ai = getAI();
+  const ai = getAI(customApiKey);
   const model = getModel('pro');
   const prompt = `你是一位顶尖的销售战略专家。针对客户 ${customer.name} (${customer.role} @ ${customer.company}) 表现出的关键兴趣点："${interest}"，请基于其行业背景提供一份【深度情报分析报告】。
 内容需包含：核心驱动力分析、差异化竞争策略、高转化谈资、行动建议。使用 Markdown 格式。`;
@@ -138,9 +140,10 @@ export async function continueDeepDiveIntoInterest(
   interest: string,
   customer: { name: string; role: string; company: string },
   history: { role: string; text: string }[],
-  question: string
+  question: string,
+  customApiKey?: string
 ): Promise<string> {
-  const ai = getAI();
+  const ai = getAI(customApiKey);
   const model = getModel('pro');
   const context = history.map((h) => `${h.role === 'user' ? '用户提问' : 'AI分析'}: ${h.text}`).join('\n\n');
   const prompt = `背景：我们正在深入探讨客户 ${customer.name} (${customer.role} @ ${customer.company}) 对 "${interest}" 的兴趣。\n之前的对话：\n${context}\n用户的新问题："${question}"\n请继续提供深度的销售战略洞察。`;
@@ -159,9 +162,10 @@ export async function askAboutInteraction(
     suggestions: string[];
   },
   history: { role: string; text: string }[],
-  question: string
+  question: string,
+  customApiKey?: string
 ): Promise<string> {
-  const ai = getAI();
+  const ai = getAI(customApiKey);
   const model = getModel('flash');
   const context = `客户：${interaction.customerProfile.name} (@ ${interaction.customerProfile.company})\n摘要：${interaction.customerProfile.summary}\n痛点：${interaction.intelligence.painPoints.join(', ')}\n兴趣：${interaction.intelligence.keyInterests.join(', ')}\nAI建议：${interaction.suggestions.join('; ')}`;
   const conversation = history.map((h) => `${h.role === 'user' ? '用户' : '助理'}: ${h.text}`).join('\n');
@@ -176,9 +180,10 @@ export async function askAboutInteraction(
 
 export async function generateCoursePlan(
   customer: { name: string; role: string; company: string },
-  context: string
+  context: string,
+  customApiKey?: string
 ): Promise<Record<string, unknown>> {
-  const ai = getAI();
+  const ai = getAI(customApiKey);
   const model = getModel('pro');
   const prompt = `客户：${customer.name} (${customer.role} @ ${customer.company})\n背景：${context}\n请输出 JSON 格式的课程规划方案，包含 title, objective, modules (数组，每项含 name, topics, duration), resources (数组)。`;
   const response = await ai.models.generateContent({
@@ -211,8 +216,8 @@ export async function generateCoursePlan(
   return JSON.parse(response.text || '{}');
 }
 
-export async function transcribeAudio(base64Data: string, mimeType: string): Promise<string> {
-  const ai = getAI();
+export async function transcribeAudio(base64Data: string, mimeType: string, customApiKey?: string): Promise<string> {
+  const ai = getAI(customApiKey);
   const model = getModel('flash');
   const response = await ai.models.generateContent({
     model,
@@ -226,8 +231,8 @@ export async function transcribeAudio(base64Data: string, mimeType: string): Pro
   return response.text?.trim() || '';
 }
 
-export async function evaluateRolePlay(history: { role: string; text: string }[]): Promise<Record<string, unknown>> {
-  const ai = getAI();
+export async function evaluateRolePlay(history: { role: string; text: string }[], customApiKey?: string): Promise<Record<string, unknown>> {
+  const ai = getAI(customApiKey);
   const model = getModel('pro');
   const content = history.map((h) => `${h.role === 'user' ? '销售' : '客户'}: ${h.text}`).join('\n');
   const prompt = `作为资深销售总监，请严厉且客观地评估以下销售模拟演练。评估准则：识别敷衍、专业度考核、扣分项、真实性。对话记录：\n${content}`;
@@ -249,9 +254,10 @@ const LOCALE_TO_LANG: Record<string, string> = {
 export async function analyzeSalesInteraction(
   input: string,
   audioData?: { data: string; mimeType: string },
-  locale?: string
+  locale?: string,
+  customApiKey?: string
 ): Promise<Record<string, unknown>> {
-  const ai = getAI();
+  const ai = getAI(customApiKey);
   const model = getModel('flash');
   const outputLang = locale && LOCALE_TO_LANG[locale] ? LOCALE_TO_LANG[locale] : '简体中文';
   const parts: { text?: string; inlineData?: { data: string; mimeType: string } }[] = [{ text: input || '分析此次互动' }];
@@ -315,8 +321,8 @@ export async function analyzeSalesInteraction(
   return JSON.parse(response.text || '{}');
 }
 
-export async function parseScheduleVoice(text: string): Promise<Record<string, unknown>> {
-  const ai = getAI();
+export async function parseScheduleVoice(text: string, customApiKey?: string): Promise<Record<string, unknown>> {
+  const ai = getAI(customApiKey);
   const model = getModel('flash');
   const today = new Date().toISOString().split('T')[0];
   const response = await ai.models.generateContent({
@@ -341,8 +347,8 @@ export async function parseScheduleVoice(text: string): Promise<Record<string, u
   return JSON.parse(response.text || '{}');
 }
 
-export async function extractSearchKeywords(text: string): Promise<string> {
-  const ai = getAI();
+export async function extractSearchKeywords(text: string, customApiKey?: string): Promise<string> {
+  const ai = getAI(customApiKey);
   const model = getModel('flash');
   const response = await ai.models.generateContent({
     model,
@@ -351,8 +357,8 @@ export async function extractSearchKeywords(text: string): Promise<string> {
   return response.text?.trim() || '';
 }
 
-export async function parseCustomerVoiceInput(text: string): Promise<Record<string, unknown>> {
-  const ai = getAI();
+export async function parseCustomerVoiceInput(text: string, customApiKey?: string): Promise<Record<string, unknown>> {
+  const ai = getAI(customApiKey);
   const model = getModel('flash');
   const response = await ai.models.generateContent({
     model,

@@ -32,6 +32,15 @@ async function request<T>(
     ...(init.headers as Record<string, string>),
   };
   if (token) (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+  
+  // 如果是 AI API 调用，且用户提供了自定义 API key，则添加到请求头
+  if (path.startsWith('/api/ai/')) {
+    const customApiKey = localStorage.getItem('custom_api_key');
+    if (customApiKey && customApiKey.trim()) {
+      (headers as Record<string, string>)['X-Gemini-API-Key'] = customApiKey.trim();
+    }
+  }
+  
   const res = await fetch(url.toString(), { ...init, headers });
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => ({}));

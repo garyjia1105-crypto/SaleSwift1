@@ -26,7 +26,7 @@ app.use(
     origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Gemini-API-Key'],
     optionsSuccessStatus: 204,
   })
 );
