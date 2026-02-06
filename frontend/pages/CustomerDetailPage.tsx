@@ -19,8 +19,8 @@ import {
   BookOpen,
   Sparkles,
   Loader2,
-  ChevronDown,
-  ChevronUp
+  CheckCircle2,
+  Circle
 } from 'lucide-react';
 import { translations, Language } from '../translations';
 import { generateCoursePlan } from '../services/aiService';
@@ -33,11 +33,13 @@ interface Props {
   coursePlans: CoursePlan[];
   onSaveCoursePlan: (p: CoursePlan) => void;
   onAddSchedule: (s: Schedule) => void;
+  onToggleScheduleStatus: (id: string) => void;
+  onUpdateSchedule: (id: string, updates: Partial<Schedule>) => void;
   onUpdateCustomer: (c: Customer) => void;
   lang: Language;
 }
 
-const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedules, coursePlans, onSaveCoursePlan, onAddSchedule, onUpdateCustomer, lang }) => {
+const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedules, coursePlans, onSaveCoursePlan, onAddSchedule, onToggleScheduleStatus, onUpdateSchedule, onUpdateCustomer, lang }) => {
   const t = translations[lang].customer_detail;
   const { colors, theme } = useTheme();
   const { id } = useParams<{ id: string }>();
@@ -48,7 +50,8 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
   const [newTagText, setNewTagText] = useState('');
   const [newSchedule, setNewSchedule] = useState({ title: '', date: '', time: '' });
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
-  const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set());
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
+  const [editingSchedule, setEditingSchedule] = useState({ title: '', date: '', time: '' });
   
   const [isEditingContact, setIsEditingContact] = useState(false);
   const customer = customers.find(c => c.id === id);
@@ -109,12 +112,6 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
     }
   };
 
-  const toggleModule = (idx: number) => {
-    const next = new Set(expandedModules);
-    if (next.has(idx)) next.delete(idx);
-    else next.add(idx);
-    setExpandedModules(next);
-  };
 
   return (
     <div className="page-transition space-y-5">
@@ -265,90 +262,35 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
         </div>
       </div>
 
-      {isTrainingCustomer && (
-        <div className="space-y-4">
-          <div className="flex justify-between items-center px-1">
-            <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
-              <BookOpen size={10}/> {t.course_plan}
-            </h3>
+      {isTrainingCustomer && currentPlan && (
+        <div className="bg-white rounded-2xl p-5 border border-blue-50 soft-shadow animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-1.5 bg-blue-600 text-white rounded-lg"><Sparkles size={14} /></div>
+            <div>
+              <h4 className="text-xs font-black text-gray-900">{currentPlan.title}</h4>
+              <p className="text-[8px] text-gray-400">{t.plan_title}</p>
+            </div>
           </div>
-          {currentPlan ? (
-            <div className="bg-white rounded-2xl p-5 border border-blue-50 soft-shadow animate-in fade-in slide-in-from-top-2">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="p-1.5 bg-blue-600 text-white rounded-lg"><Sparkles size={14} /></div>
-                <div>
-                  <h4 className="text-xs font-black text-gray-900">{currentPlan.title}</h4>
-                  <p className="text-[8px] text-gray-400">{t.plan_title}</p>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <p className="text-[8px] font-black text-blue-600 uppercase tracking-widest mb-1.5">{t.plan_objective}</p>
-                  <p className="text-[10px] text-gray-600 leading-relaxed font-medium">{currentPlan.objective}</p>
-                </div>
-                
-                <div className="space-y-2">
-                  <p className="text-[8px] font-black text-blue-600 uppercase tracking-widest mb-1.5">{t.plan_modules}</p>
-                  {currentPlan.modules.map((m, i) => (
-                    <div key={i} className="border border-gray-50 rounded-xl overflow-hidden">
-                      <button 
-                        onClick={() => toggleModule(i)}
-                        className="w-full flex items-center justify-between p-3 bg-gray-50/50 hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[9px] font-black">{i+1}</span>
-                          <span className="text-[10px] font-bold text-gray-700">{m.name}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[8px] text-gray-400 font-bold">{m.duration}</span>
-                          {expandedModules.has(i) ? <ChevronUp size={12} className="text-gray-300" /> : <ChevronDown size={12} className="text-gray-300" />}
-                        </div>
-                      </button>
-                      {expandedModules.has(i) && (
-                        <div className="p-3 bg-white space-y-1 animate-in slide-in-from-top-1">
-                          {m.topics.map((topic, ti) => (
-                            <div key={ti} className="flex items-center gap-2 py-0.5">
-                              <div className="w-1 h-1 rounded-full bg-blue-400"></div>
-                              <span className="text-[9px] text-gray-500">{topic}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+          
+          <div className="space-y-3">
+            <div>
+              <p className="text-[8px] font-black text-blue-600 uppercase tracking-widest mb-1.5">{t.plan_objective}</p>
+              <p className="text-[10px] text-gray-600 leading-relaxed font-medium">{currentPlan.objective}</p>
+            </div>
+            
+            {currentPlan.resources && currentPlan.resources.length > 0 && (
+              <div>
+                <p className="text-[8px] font-black text-blue-600 uppercase tracking-widest mb-1.5">{t.plan_resources}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {currentPlan.resources.map((res, i) => (
+                    <span key={i} className="px-2 py-1 bg-gray-50 text-gray-500 rounded-lg text-[8px] font-bold border border-gray-100">
+                      {res}
+                    </span>
                   ))}
                 </div>
-
-                {currentPlan.resources && currentPlan.resources.length > 0 && (
-                  <div>
-                    <p className="text-[8px] font-black text-blue-600 uppercase tracking-widest mb-1.5">{t.plan_resources}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {currentPlan.resources.map((res, i) => (
-                        <span key={i} className="px-2 py-1 bg-gray-50 text-gray-500 rounded-lg text-[8px] font-bold border border-gray-100">
-                          {res}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
-            </div>
-          ) : (
-            <div className="bg-gray-50 py-10 rounded-2xl border border-dashed border-gray-100 text-center flex flex-col items-center">
-              <BookOpen size={24} className="text-gray-200 mb-2" />
-              <p className="text-[9px] text-gray-300 font-bold tracking-widest uppercase">{t.no_plan}</p>
-              {isTrainingCustomer && (
-                <button 
-                  onClick={handleGeneratePlan}
-                  disabled={isGeneratingPlan}
-                  className="mt-3 text-[10px] font-black text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                >
-                  {isGeneratingPlan ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                  {isGeneratingPlan ? t.generating : t.gen_course}
-                </button>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
@@ -389,23 +331,119 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
           <button onClick={()=>setShowAddSchedule(true)} className={`text-[9px] font-bold ${colors.text.accent}`}>{t.add_schedule}</button>
         </div>
         <div className="space-y-2">
-          {customerSchedules.filter(s=>s.status==='pending').length === 0 ? (
+          {customerSchedules.length === 0 ? (
             <div className="text-center py-6 bg-gray-50 rounded-2xl border border-dashed border-gray-100 text-[8px] text-gray-300 font-bold uppercase">
               {t.no_schedules}
             </div>
           ) : (
-            customerSchedules.filter(s=>s.status==='pending').map(sched => (
-              <div key={sched.id} className="p-3 bg-white rounded-xl border border-gray-100 soft-shadow flex justify-between items-center">
-                <div>
-                  <p className="font-bold text-[10px] text-gray-900 leading-none">{sched.title}</p>
-                  <p className="text-[9px] text-gray-400 mt-1">{sched.date}</p>
+            customerSchedules.map(sched => {
+              const isEditing = editingScheduleId === sched.id;
+              return (
+                <div key={sched.id} className={`bg-white rounded-xl border transition-all relative ${sched.status==='completed' ? 'opacity-50 border-gray-50' : 'border-gray-100 soft-shadow'} ${(showAddSchedule || editingScheduleId) ? 'opacity-30' : ''} z-10`}>
+                  <div className="flex items-center gap-3 p-3">
+                    <button onClick={() => onToggleScheduleStatus(sched.id)} className={`shrink-0 transition-colors ${sched.status==='completed'?'text-emerald-500':'text-gray-200'}`}>
+                      {sched.status==='completed' ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                    </button>
+                    <div className="flex-1 overflow-hidden">
+                      <h4 className={`text-xs font-bold truncate ${sched.status==='completed'?'line-through text-gray-400':'text-gray-900'}`}>{sched.title}</h4>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="flex items-center gap-0.5 text-[8px] text-gray-400 font-medium"><Calendar size={8} /> {sched.date}{sched.time ? ` ${sched.time}` : ''}</span>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setEditingScheduleId(sched.id);
+                        setEditingSchedule({
+                          title: sched.title,
+                          date: sched.date,
+                          time: sched.time || '',
+                        });
+                      }}
+                      className="shrink-0 p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                      title="编辑"
+                    >
+                      <Edit2 size={14} />
+                    </button>
+                  </div>
                 </div>
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
+
+      {/* 蒙板：当添加或编辑日程时显示 */}
+      {(showAddSchedule || editingScheduleId) && (
+        <div 
+          className="fixed top-0 left-0 right-0 bottom-14 bg-black/30 backdrop-blur-sm z-30"
+          onClick={() => {
+            if (showAddSchedule) setShowAddSchedule(false);
+            if (editingScheduleId) {
+              setEditingScheduleId(null);
+              setEditingSchedule({ title: '', date: '', time: '' });
+            }
+          }}
+        />
+      )}
+
+      {/* 编辑日程对话框 */}
+      {editingScheduleId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pointer-events-none">
+          <div className="bg-white rounded-xl border border-emerald-200 shadow-2xl w-full max-w-md p-4 space-y-2.5 pointer-events-auto">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-[10px] font-bold text-emerald-700">{t.edit || '编辑日程'}</span>
+              <button 
+                type="button" 
+                onClick={() => { 
+                  setEditingScheduleId(null); 
+                  setEditingSchedule({ title: '', date: '', time: '' }); 
+                }} 
+                className="text-emerald-600 p-1 rounded hover:bg-emerald-100"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const editingItem = customerSchedules.find(s => s.id === editingScheduleId);
+              if (editingItem) {
+                onUpdateSchedule(editingScheduleId, {
+                  title: editingSchedule.title,
+                  date: editingSchedule.date,
+                  time: editingSchedule.time || undefined,
+                });
+              }
+              setEditingScheduleId(null);
+              setEditingSchedule({ title: '', date: '', time: '' });
+            }} className="space-y-2.5">
+              <textarea 
+                required 
+                placeholder={t.placeholder_title || t.subject} 
+                rows={3}
+                className="w-full px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400 resize-none" 
+                value={editingSchedule.title} 
+                onChange={e => setEditingSchedule({...editingSchedule, title: e.target.value})} 
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <input 
+                  type="date" 
+                  required 
+                  className="px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" 
+                  value={editingSchedule.date} 
+                  onChange={e => setEditingSchedule({...editingSchedule, date: e.target.value})} 
+                />
+                <input 
+                  type="time" 
+                  className="px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" 
+                  value={editingSchedule.time} 
+                  onChange={e => setEditingSchedule({...editingSchedule, time: e.target.value})} 
+                />
+              </div>
+              <button type="submit" className="w-full py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-xs btn-active-scale">{t.confirm}</button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {showAddSchedule && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50">
