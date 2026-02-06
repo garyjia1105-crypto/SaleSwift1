@@ -41,10 +41,34 @@ async function request<T>(
     }
   }
   
-  const res = await fetch(url.toString(), { ...init, headers });
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), { ...init, headers });
+  } catch (err) {
+    const error = err as Error;
+    if (error.message.includes('Failed to fetch') || error.message.includes('ERR_CONNECTION_CLOSED') || error.message.includes('NetworkError')) {
+      throw new Error('网络连接失败，请检查网络或稍后重试');
+    }
+    throw new Error(error.message || '请求失败，请稍后重试');
+  }
+  
   if (res.status === 204) return undefined as T;
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || res.statusText || 'Request failed');
+  
+  let data: any;
+  try {
+    data = await res.json();
+  } catch (err) {
+    // 如果响应不是有效的 JSON，可能是连接中断
+    if (!res.ok) {
+      throw new Error(`请求失败 (${res.status}): ${res.statusText || '服务器错误'}`);
+    }
+    throw new Error('服务器返回的数据格式不正确');
+  }
+  
+  if (!res.ok) {
+    throw new Error(data.error || res.statusText || `请求失败 (${res.status})`);
+  }
+  
   return data as T;
 }
 

@@ -43,6 +43,9 @@ export async function transcribeAudio(base64Data: string, mimeType: string): Pro
 
 export async function deepDiveIntoInterest(interest: string, customer: Customer): Promise<string> {
   const { text } = await api.ai.deepDiveInterest({ interest, customer });
+  if (!text || typeof text !== 'string') {
+    throw new Error('AI 返回的数据格式不正确，请稍后重试');
+  }
   return text;
 }
 
@@ -53,6 +56,9 @@ export async function continueDeepDiveIntoInterest(
   question: string
 ): Promise<string> {
   const { text } = await api.ai.continueDeepDive({ interest, customer, history, question });
+  if (!text || typeof text !== 'string') {
+    throw new Error('AI 返回的数据格式不正确，请稍后重试');
+  }
   return text;
 }
 

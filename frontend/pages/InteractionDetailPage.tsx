@@ -21,7 +21,8 @@ import {
   Cpu,
   Clock,
   Send,
-  User as UserIcon
+  User as UserIcon,
+  RefreshCw
 } from 'lucide-react';
 import { Interaction, Schedule } from '../types';
 import { deepDiveIntoInterest, continueDeepDiveIntoInterest, askAboutInteraction } from '../services/aiService';
@@ -51,6 +52,7 @@ const DetailSection: React.FC<{ title: string, icon: React.ReactNode, children: 
 // Custom light markdown-style parser for better display
 // Fix: Removed hardcoded text-gray-600 to allow inheriting color from parent container
 const MarkdownContent: React.FC<{ content: string, inverse?: boolean }> = ({ content, inverse }) => {
+  if (!content) return <p className={inverse ? 'text-white/70' : 'text-gray-400'}>内容为空</p>;
   const lines = content.split('\n');
   const textColorClass = inverse ? 'text-white' : 'text-gray-700';
   const boldColorClass = inverse ? 'text-white' : 'text-gray-900';
@@ -114,6 +116,7 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
   const [qaInput, setQaInput] = useState('');
   const [isDiving, setIsDiving] = useState(false);
   const [isAnswering, setIsAnswering] = useState(false);
+  const [diveError, setDiveError] = useState<string | null>(null);
   
   // Page Bottom Chat State
   const [assistantHistory, setAssistantHistory] = useState<{ role: 'user' | 'model', text: string }[]>([]);
@@ -178,11 +181,17 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
     setDivingInterest(interest);
     setIsDiving(true);
     setDiveHistory([]);
+    setDiveError(null);
     try {
       const result = await deepDiveIntoInterest(interest, item.customerProfile);
+      if (!result || typeof result !== 'string') {
+        throw new Error('AI 返回的数据格式不正确');
+      }
       setDiveHistory([{ role: 'model', text: result }]);
     } catch (err) {
-      setDiveHistory([{ role: 'model', text: "获取深度解析失败，请检查网络或稍后重试。" }]);
+      const errorMsg = (err as Error)?.message || '获取深度解析失败，请检查网络或稍后重试。';
+      setDiveError(errorMsg);
+      setDiveHistory([{ role: 'model', text: errorMsg }]);
     } finally {
       setIsDiving(false);
     }
@@ -196,12 +205,17 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
     setQaInput('');
     setDiveHistory(prev => [...prev, { role: 'user', text: userMsg }]);
     setIsAnswering(true);
+    setDiveError(null);
 
     try {
       const result = await continueDeepDiveIntoInterest(divingInterest, item.customerProfile, diveHistory, userMsg);
+      if (!result || typeof result !== 'string') {
+        throw new Error('AI 返回的数据格式不正确');
+      }
       setDiveHistory(prev => [...prev, { role: 'model', text: result }]);
     } catch (err) {
-      setDiveHistory(prev => [...prev, { role: 'model', text: "抱歉，AI 暂时无法回答。请尝试重新提问。" }]);
+      const errorMsg = (err as Error)?.message || '抱歉，AI 暂时无法回答。请尝试重新提问。';
+      setDiveHistory(prev => [...prev, { role: 'model', text: errorMsg }]);
     } finally {
       setIsAnswering(false);
     }
@@ -467,7 +481,7 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
                    <p className="text-[10px] text-blue-100 font-bold uppercase tracking-widest truncate">{divingInterest}</p>
                  </div>
                </div>
-               <button onClick={() => { setDivingInterest(null); setDiveHistory([]); }} className="bg-white/10 hover:bg-white/20 p-2 rounded-xl transition-all"><X size={20} /></button>
+               <button onClick={() => { setDivingInterest(null); setDiveHistory([]); setDiveError(null); }} className="bg-white/10 hover:bg-white/20 p-2 rounded-xl transition-all"><X size={20} /></button>
             </div>
 
             {/* Modal Chat Body */}
@@ -481,6 +495,34 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
                   <div className="text-center">
                     <p className="text-sm font-black text-gray-900 tracking-tight">{t.dive_loading}</p>
                     <p className="text-[10px] text-gray-400 mt-1 font-bold uppercase tracking-widest animate-pulse">正在分析中，请稍候...</p>
+                  </div>
+                </div>
+              ) : diveError && diveHistory.length === 1 && diveHistory[0].role === 'model' ? (
+                <div className="flex flex-col items-center justify-center py-20 space-y-6">
+                  <div className="relative">
+                    <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center">
+                      <AlertTriangle size={32} className="text-rose-500" />
+                    </div>
+                  </div>
+                  <div className="text-center space-y-3">
+                    <p className="text-sm font-black text-gray-900 tracking-tight">请求失败</p>
+                    <p className="text-xs text-gray-500 max-w-xs">{diveError}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => divingInterest && handleDeepDive(divingInterest)}
+                      disabled={isDiving}
+                      className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold flex items-center gap-2 btn-active-scale disabled:opacity-50"
+                    >
+                      <RefreshCw size={14} className={isDiving ? 'animate-spin' : ''} />
+                      重试
+                    </button>
+                    <button
+                      onClick={() => { setDivingInterest(null); setDiveHistory([]); setDiveError(null); }}
+                      className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-xs font-bold btn-active-scale"
+                    >
+                      关闭
+                    </button>
                   </div>
                 </div>
               ) : (
