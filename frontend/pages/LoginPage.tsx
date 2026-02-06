@@ -3,20 +3,24 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Zap, Mail, Lock, Loader2, ArrowRight, ShieldCheck } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { api, setToken } from '../services/api';
+import { translations, Language } from '../translations';
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 interface Props {
   onLogin: () => void;
+  language: Language;
+  setLanguage: (lang: Language) => void;
 }
 
-const LoginPage: React.FC<Props> = ({ onLogin }) => {
+const LoginPage: React.FC<Props> = ({ onLogin, language, setLanguage }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
   const navigate = useNavigate();
+  const t = translations[language]?.login ?? translations.zh.login;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +58,7 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-6 z-[100]">
+    <div className="fixed inset-0 flex items-center justify-center p-6 z-[100] relative">
       {/* Auth Success/Processing Overlay */}
       {googleLoading && (
         <div className="fixed inset-0 bg-white/60 backdrop-blur-xl z-[110] flex flex-col items-center justify-center animate-in fade-in duration-300">
@@ -69,15 +73,32 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
         </div>
       )}
 
+      {/* 语言切换按钮 */}
+      <div className="absolute top-6 right-6 z-[101]">
+        <div className="flex bg-white/80 backdrop-blur-sm border border-gray-100 p-1 rounded-full shadow-sm">
+          {(['zh', 'en', 'ja', 'ko'] as Language[]).map(lang => (
+            <button 
+              key={lang}
+              onClick={() => setLanguage(lang)}
+              className={`px-2 py-1 text-[8px] font-black rounded-full transition-all uppercase ${
+                language === lang ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              {lang}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="w-full max-w-[380px] flex flex-col items-center page-transition">
         <div className="mb-10 text-center">
           <div className="w-16 h-16 bg-blue-600 rounded-[22px] flex items-center justify-center text-white mb-5 mx-auto shadow-2xl shadow-blue-200 rotate-3">
             <Zap size={32} />
           </div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">SaleSwift AI</h1>
+          <h1 className="text-2xl font-black text-gray-900 tracking-tight">{t.title}</h1>
           <div className="flex items-center justify-center gap-1.5 mt-1.5">
             <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></span>
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">智能销售副驾驶系统</p>
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t.subtitle}</p>
           </div>
         </div>
 
@@ -91,7 +112,7 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
                   type="email" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="请输入电子邮箱" 
+                  placeholder={t.email_placeholder}
                   required
                   className="w-full pl-10 pr-4 py-3.5 bg-gray-50/50 border border-transparent rounded-2xl outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 transition-all text-xs font-semibold placeholder:text-gray-400"
                 />
@@ -102,7 +123,7 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
                   type="password" 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="请输入登录密码" 
+                  placeholder={t.password_placeholder}
                   required
                   className="w-full pl-10 pr-4 py-3.5 bg-gray-50/50 border border-transparent rounded-2xl outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 transition-all text-xs font-semibold placeholder:text-gray-400"
                 />
@@ -110,7 +131,7 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
             </div>
 
             <div className="text-right">
-              <button type="button" onClick={() => alert('功能开发中，敬请期待。')} className="text-[10px] font-bold text-gray-400 hover:text-blue-600 transition-colors">忘记密码？</button>
+              <button type="button" onClick={() => alert(t.forget_password_coming_soon)} className="text-[10px] font-bold text-gray-400 hover:text-blue-600 transition-colors">{t.forget_password}</button>
             </div>
 
             <button 
@@ -118,7 +139,7 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
               disabled={loading || googleLoading}
               className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-xs btn-active-scale shadow-lg shadow-blue-200 flex items-center justify-center gap-2 group"
             >
-              {loading ? <Loader2 size={16} className="animate-spin" /> : <>立即登录 <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" /></>}
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <>{t.login_button} <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" /></>}
             </button>
           </form>
 
@@ -127,7 +148,7 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
               <div className="w-full border-t border-gray-100"></div>
             </div>
             <div className="relative flex justify-center text-[9px] uppercase font-black tracking-widest text-gray-300 bg-white px-4">
-              或者
+              {t.or}
             </div>
           </div>
 
@@ -165,11 +186,11 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
 
         <div className="mt-8 flex flex-col items-center gap-3">
           <p className="text-[10px] text-gray-500 font-medium">
-            还没有账号？ <Link to="/register" className="text-blue-600 font-black hover:underline underline-offset-4 decoration-2">立即免费注册</Link>
+            {t.no_account} <Link to="/register" className="text-blue-600 font-black hover:underline underline-offset-4 decoration-2">{t.register_link}</Link>
           </p>
           <div className="flex items-center gap-1.5 px-3 py-1 bg-white/50 border border-white/50 rounded-full shadow-sm">
              <ShieldCheck size={10} className="text-emerald-500" />
-             <span className="text-[8px] text-gray-400 font-bold uppercase tracking-widest">企业级 OAuth 2.0 数据加密保护</span>
+             <span className="text-[8px] text-gray-400 font-bold uppercase tracking-widest">{t.security_text}</span>
           </div>
         </div>
       </div>

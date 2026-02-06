@@ -302,6 +302,8 @@ export const api = {
         '/api/ai/evaluate-role-play',
         { method: 'POST', body: JSON.stringify(body) }
       ),
+    generateReport: (body: { interactions: unknown[]; startDate: string; endDate: string; locale?: string }) =>
+      request<{ report: string }>('/api/ai/generate-report', { method: 'POST', body: JSON.stringify(body) }),
     transcribeAudio: (body: { base64Data: string; mimeType?: string }) =>
       request<{ text: string }>('/api/ai/transcribe-audio', { method: 'POST', body: JSON.stringify(body) }),
     deepDiveInterest: (body: { interest: string; customer: { name: string; [k: string]: unknown } }) =>

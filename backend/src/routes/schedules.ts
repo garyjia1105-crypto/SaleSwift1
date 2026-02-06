@@ -15,6 +15,7 @@ function toSchedule(doc: { _id: mongoose.Types.ObjectId; [key: string]: any }) {
     time: doc.time ?? undefined,
     description: doc.description ?? undefined,
     status: (doc.status === 'completed' ? 'completed' : 'pending') as 'pending' | 'completed',
+    updatedAt: doc.updatedAt ? new Date(doc.updatedAt).toISOString() : undefined,
   };
 }
 

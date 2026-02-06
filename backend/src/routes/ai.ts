@@ -234,3 +234,17 @@ aiRouter.post('/extract-search-keywords', async (req, res) => {
     return handleAiError(res, e, 'extract-search-keywords:');
   }
 });
+
+aiRouter.post('/generate-report', async (req, res) => {
+  try {
+    const { interactions, startDate, endDate, locale } = req.body;
+    if (!Array.isArray(interactions) || !startDate || !endDate) {
+      return res.status(400).json({ error: 'interactions array, startDate, and endDate required' });
+    }
+    const customApiKey = getCustomApiKey(req);
+    const report = await ai.generateReport(interactions, startDate, endDate, locale, customApiKey);
+    return res.json({ report });
+  } catch (e) {
+    return handleAiError(res, e, 'generate-report:');
+  }
+});

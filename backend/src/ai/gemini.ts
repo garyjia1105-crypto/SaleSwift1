@@ -357,6 +357,83 @@ export async function extractSearchKeywords(text: string, customApiKey?: string)
   return response.text?.trim() || '';
 }
 
+export async function generateReport(
+  interactions: Array<{
+    date: string;
+    customerProfile: { name: string; company: string; summary: string };
+    intelligence: { currentStage: string; painPoints: string[]; keyInterests: string[]; probability: number };
+    metrics: { sentiment: string };
+  }>,
+  startDate: string,
+  endDate: string,
+  locale?: string,
+  customApiKey?: string
+): Promise<string> {
+  const ai = getAI(customApiKey);
+  const model = getModel('pro');
+  const outputLang = locale && LOCALE_TO_LANG[locale] ? LOCALE_TO_LANG[locale] : '简体中文';
+  
+  if (interactions.length === 0) {
+    return `## ${outputLang === '简体中文' ? '汇报' : outputLang === 'English' ? 'Report' : outputLang === '日本語' ? 'レポート' : '리포트'}\n\n时间段：${startDate} 至 ${endDate}\n\n该时间段内暂无复盘记录。`;
+  }
+
+  // 统计数据
+  const count = interactions.length;
+  const customers = Array.from(new Set(interactions.map(i => i.customerProfile.name))).slice(0, 10);
+  const stages = interactions.reduce((acc, i) => {
+    const stage = i.intelligence?.currentStage || '未知';
+    acc[stage] = (acc[stage] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const sentiments = interactions.reduce((acc, i) => {
+    const sentiment = i.metrics?.sentiment || '未知';
+    acc[sentiment] = (acc[sentiment] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const avgProbability = interactions.reduce((sum, i) => sum + (i.intelligence?.probability || 0), 0) / count;
+
+  const prompt = `请基于以下时间段内的复盘记录生成一份销售汇报。**重要：所有输出内容必须全部使用${outputLang}。**
+
+时间段：${startDate} 至 ${endDate}
+复盘数量：${count}
+关键客户：${customers.join('、')}
+销售阶段分布：${Object.entries(stages).map(([k, v]) => `${k}(${v})`).join('、')}
+情绪分析：${Object.entries(sentiments).map(([k, v]) => `${k}(${v})`).join('、')}
+平均成交概率：${avgProbability.toFixed(1)}%
+
+复盘记录详情：
+${interactions.map((i, idx) => `
+${idx + 1}. ${i.customerProfile.name} (@ ${i.customerProfile.company})
+   日期：${i.date}
+   阶段：${i.intelligence?.currentStage || '未知'}
+   概率：${i.intelligence?.probability || 0}%
+   情绪：${i.metrics?.sentiment || '未知'}
+   摘要：${i.customerProfile.summary}
+   痛点：${i.intelligence?.painPoints?.join('、') || '无'}
+   兴趣：${i.intelligence?.keyInterests?.join('、') || '无'}
+`).join('\n')}
+
+请生成一份结构化的汇报，使用 Markdown 格式，包含：
+1. 时间段概述
+2. 关键数据统计
+3. 主要客户和商机
+4. 销售阶段分析
+5. 情绪趋势
+6. 核心洞察和建议
+
+汇报应该专业、清晰、有洞察力。`;
+
+  const response = await ai.models.generateContent({
+    model,
+    contents: prompt,
+    config: {
+      temperature: 0.7,
+    },
+  });
+
+  return response.text?.trim() || `## ${outputLang === '简体中文' ? '汇报生成失败' : 'Report generation failed'}`;
+}
+
 export async function parseCustomerVoiceInput(text: string, customApiKey?: string): Promise<Record<string, unknown>> {
   const ai = getAI(customApiKey);
   const model = getModel('flash');

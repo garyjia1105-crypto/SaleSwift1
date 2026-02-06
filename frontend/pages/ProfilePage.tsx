@@ -114,6 +114,7 @@ const ProfilePage: React.FC<Props> = ({
           <div className={`w-24 h-24 rounded-[32px] flex items-center justify-center text-2xl font-black shadow-xl mb-3 border-4 overflow-hidden transition-all ${
             theme === 'nature' ? 'bg-emerald-600 border-white shadow-emerald-100' : 
             theme === 'dark' ? 'bg-blue-500 border-gray-700 shadow-none' :
+            theme === 'orange' ? 'bg-orange-600 border-white shadow-orange-100' :
             'bg-blue-600 border-white shadow-blue-100'
           }`}>
             {avatar ? (
@@ -196,7 +197,7 @@ const ProfilePage: React.FC<Props> = ({
           <div className="flex gap-1.5 mr-1">
             <ThemeItem type="classic" label={t.theme_classic} active={theme === 'classic'} onSelect={onSetTheme} colors="bg-blue-600" />
             <ThemeItem type="dark" label={t.theme_dark} active={theme === 'dark'} onSelect={onSetTheme} colors="bg-gray-900" />
-            <ThemeItem type="minimal" label={t.theme_minimal} active={theme === 'minimal'} onSelect={onSetTheme} colors="bg-slate-700" />
+            <ThemeItem type="orange" label={t.theme_orange} active={theme === 'orange'} onSelect={onSetTheme} colors="bg-orange-600" />
             <ThemeItem type="nature" label={t.theme_nature} active={theme === 'nature'} onSelect={onSetTheme} colors="bg-emerald-600" />
           </div>
         </MenuItem>
@@ -207,7 +208,7 @@ const ProfilePage: React.FC<Props> = ({
                 key={l}
                 onClick={(e) => { e.stopPropagation(); onSetLanguage(l); }}
                 className={`w-6 h-6 rounded-md flex items-center justify-center text-[8px] font-black uppercase transition-all ${
-                  lang === l ? `${theme === 'nature' ? 'bg-emerald-600' : 'bg-blue-600'} text-white shadow-sm` : 'bg-gray-100 text-gray-300'
+                  lang === l ? `${theme === 'nature' ? 'bg-emerald-600' : theme === 'orange' ? 'bg-orange-600' : 'bg-blue-600'} text-white shadow-sm` : 'bg-gray-100 text-gray-300'
                 }`}
                >
                  {l}

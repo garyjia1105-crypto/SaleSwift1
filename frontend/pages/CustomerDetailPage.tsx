@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { translations, Language } from '../translations';
 import { generateCoursePlan } from '../services/aiService';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface Props {
   customers: Customer[];
@@ -38,6 +39,7 @@ interface Props {
 
 const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedules, coursePlans, onSaveCoursePlan, onAddSchedule, onUpdateCustomer, lang }) => {
   const t = translations[lang].customer_detail;
+  const { colors } = useTheme();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
@@ -168,7 +170,7 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
                 </div>
               ) : (
                 <>
-                  <h2 className="text-base font-bold text-gray-900 leading-none">{customer.name}</h2>
+                  <h2 className={`text-base font-bold leading-none ${colors.text.primary}`}>{customer.name}</h2>
                   <p className="text-[10px] text-gray-500 mt-1 font-medium truncate">{customer.role} @ {customer.company}</p>
                 </>
               )}

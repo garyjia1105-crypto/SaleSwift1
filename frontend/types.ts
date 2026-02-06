@@ -42,6 +42,7 @@ export interface Schedule {
   time?: string; // HH:mm
   description?: string;
   status: 'pending' | 'completed';
+  updatedAt?: string; // ISO string
 }
 
 export interface CustomerProfile {

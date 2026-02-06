@@ -19,6 +19,7 @@ import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { extractSearchKeywords } from '../services/aiService';
 import { translations, Language } from '../translations';
+import { useTheme } from '../contexts/ThemeContext';
 
 /** 将复盘返回的阶段文案归一化为 SalesStage 枚举 */
 function normalizeStage(stage: string | undefined): SalesStage {
@@ -45,6 +46,20 @@ interface Props {
 
 const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSync, onAdd, lang }) => {
   const t = translations[lang].customers;
+  const { colors } = useTheme();
+
+  // 将 SalesStage 枚举值映射到翻译键
+  const getStageTranslation = (stage: SalesStage): string => {
+    const stageMap: Record<SalesStage, keyof typeof t> = {
+      [SalesStage.PROSPECTING]: 'stage_prospecting',
+      [SalesStage.QUALIFICATION]: 'stage_qualification',
+      [SalesStage.PROPOSAL]: 'stage_proposal',
+      [SalesStage.NEGOTIATION]: 'stage_negotiation',
+      [SalesStage.CLOSED_WON]: 'stage_closed_won',
+      [SalesStage.CLOSED_LOST]: 'stage_closed_lost',
+    };
+    return t[stageMap[stage]] as string;
+  };
 
   const customerStageCounts = useMemo(() => {
     const stageToCount: Record<SalesStage, number> = Object.values(SalesStage).reduce(
@@ -64,7 +79,7 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
     return stageToCount;
   }, [customers, interactions]);
   const stageData = Object.values(SalesStage).map(stage => ({
-    name: stage.slice(0, 2),
+    name: getStageTranslation(stage),
     count: customerStageCounts[stage] ?? 0
   }));
   const [searchTerm, setSearchTerm] = useState('');
@@ -109,11 +124,11 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
     <div className="flex flex-col min-h-full relative">
       <div className="page-transition flex flex-col flex-1 min-h-0 animate-in fade-in duration-500">
         <header className="shrink-0">
-          <h2 className="text-base font-bold text-gray-900 leading-none">{t.title}</h2>
+          <h2 className={`text-base font-bold leading-none ${colors.text.primary}`}>{t.title}</h2>
           <p className="text-[10px] text-gray-500 font-medium mt-1">{t.subtitle}</p>
         </header>
 
-        <main className="flex-1 overflow-auto pb-44 space-y-4">
+        <main className="flex-1 overflow-auto pb-0 space-y-4">
       <div className="p-4 rounded-2xl border border-gray-100 soft-shadow bg-white">
         <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-4">{t.funnel}</h3>
         <div className="h-[140px] w-full min-w-0">
@@ -123,8 +138,8 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 8, fill: '#94a3b8' }} />
                 <YAxis hide domain={[0, 'auto']} />
-                <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', fontSize: '10px' }} formatter={(value: number) => [value, '客户数']} />
-                <Bar dataKey="count" radius={[2, 2, 0, 0]} fill="#3b82f6" minPointSize={2} />
+                <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', fontSize: '10px' }} formatter={(value: number) => [value, t.customer_count]} />
+                <Bar dataKey="count" radius={[2, 2, 0, 0]} fill={colors.chartBarFill} minPointSize={2} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -142,7 +157,7 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
             <button 
               onClick={() => setSelectedTag(null)}
               className={`px-3 py-1 rounded-full text-[9px] font-bold transition-all border whitespace-nowrap ${
-                !selectedTag ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-100 text-gray-500'
+                !selectedTag ? `${colors.button.primary} ${colors.primary.border}` : `${colors.bg.card} ${colors.border.light} ${colors.text.secondary}`
               }`}
             >
               {t.filter_all}
@@ -152,7 +167,7 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
                 key={tag}
                 onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
                 className={`px-3 py-1 rounded-full text-[9px] font-bold transition-all border whitespace-nowrap ${
-                  tag === selectedTag ? 'bg-blue-600 border-blue-600 text-white' : 'bg-blue-50 border-blue-50 text-blue-600'
+                  tag === selectedTag ? `${colors.button.primary} ${colors.primary.border}` : `${colors.badge.primary} ${colors.text.accent}`
                 }`}
               >
                 {tag}
@@ -175,7 +190,7 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
               to={`/customers/${customer.id}`}
               className="group bg-white p-4 rounded-2xl border border-gray-100 soft-shadow hover:border-blue-100 transition-all flex items-center gap-4"
             >
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0">
+              <div className={`w-10 h-10 rounded-xl ${colors.badge.primary} flex items-center justify-center font-bold text-sm shrink-0`}>
                 <User size={18} />
               </div>
               <div className="flex-1 overflow-hidden">
@@ -189,7 +204,7 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
                   ))}
                 </div>
               </div>
-              <ChevronRight size={14} className="text-gray-300 group-hover:text-blue-600 transition-all shrink-0" />
+              <ChevronRight size={14} className={`text-gray-300 transition-all shrink-0 ${colors.hover.accent}`} />
             </Link>
           ))
         )}
@@ -197,55 +212,59 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
       </main>
       </div>
 
+      {/* 蒙板：当添加客户时显示 */}
+      {showAddForm && (
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30"
+          onClick={() => setShowAddForm(false)}
+        />
+      )}
       {/* 底部固定栏：不放在 page-transition 内，避免 transform 导致首帧错位 */}
-      <div className="fixed left-0 right-0 bottom-16 z-40 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] py-2 pb-safe px-3">
+      <div className="fixed left-0 right-0 bottom-14 z-40 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] py-2 px-3">
+        {showAddForm && (
+          <div className={`mb-3 pt-2 border-t ${colors.border.accent} ${colors.badge.primary} rounded-xl px-3 pb-3`}>
+            <div className="flex justify-between items-center mb-2">
+              <span className={`text-[10px] font-bold ${colors.text.accent}`}>{t.manual_title}</span>
+              <button type="button" onClick={() => setShowAddForm(false)} className={`${colors.text.accent} p-1 rounded ${colors.bg.hover}`}><X size={14} /></button>
+            </div>
+            <form onSubmit={(e) => { e.preventDefault(); onAdd({id:'m-'+Date.now(), ...newCustomer, tags:newCustomer.tagsInput.split(/[ ,]/).filter(t=>t), createdAt: new Date().toISOString()}); setShowAddForm(false); setNewCustomer({ name: '', company: '', tagsInput: '' }); }} className="space-y-2.5">
+              <div className="grid grid-cols-2 gap-2">
+                <input placeholder={t.name} required className={`px-3 py-2 ${colors.bg.card} ${colors.border.accent} rounded-lg text-xs outline-none focus:ring-2 ${colors.primary.ring}`} value={newCustomer.name} onChange={e => setNewCustomer({...newCustomer, name: e.target.value})} />
+                <input placeholder={t.company} required className={`px-3 py-2 ${colors.bg.card} ${colors.border.accent} rounded-lg text-xs outline-none focus:ring-2 ${colors.primary.ring}`} value={newCustomer.company} onChange={e => setNewCustomer({...newCustomer, company: e.target.value})} />
+              </div>
+              <input placeholder={t.tags} className={`w-full px-3 py-2 ${colors.bg.card} ${colors.border.accent} rounded-lg text-xs outline-none focus:ring-2 ${colors.primary.ring}`} value={newCustomer.tagsInput} onChange={e => setNewCustomer({...newCustomer, tagsInput: e.target.value})} />
+              <button type="submit" className={`w-full py-2.5 ${colors.button.primary} rounded-xl font-bold text-xs btn-active-scale`}>{t.save}</button>
+            </form>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <div className="relative flex-1 min-w-0">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
             <input
               type="text"
               placeholder={t.search}
-              className="w-full pl-8 pr-2.5 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-medium focus:ring-1 focus:ring-blue-500 outline-none"
+              className={`w-full pl-8 pr-2.5 py-2.5 ${colors.bg.input} ${colors.border.light} rounded-xl text-xs font-medium focus:ring-1 ${colors.primary.ring} outline-none`}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <button
+            onClick={() => setShowAddForm(true)}
+            className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all btn-active-scale"
+          >
+            <Plus size={18} />
+          </button>
+          <button
             onClick={startSearchVoiceInput}
             disabled={searchRecording || isSearchVoiceProcessing}
             className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all btn-active-scale shadow-lg ${
-              searchRecording ? 'bg-red-500 text-white' : isSearchVoiceProcessing ? 'bg-gray-400 text-white' : 'bg-blue-600 text-white'
+              searchRecording ? 'bg-red-500 text-white' : isSearchVoiceProcessing ? 'bg-gray-400 text-white' : colors.button.primary
             }`}
           >
             {isSearchVoiceProcessing ? <Loader2 className="animate-spin" size={22} /> : <Mic size={22} />}
           </button>
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-blue-600 text-white text-[10px] font-bold shadow-lg btn-active-scale"
-          >
-            <Plus size={18} /> {t.add}
-          </button>
         </div>
       </div>
-
-      {showAddForm && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-end justify-center">
-          <div className="bg-white rounded-t-3xl w-full max-w-[480px] p-6 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-200">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-bold">{t.manual_title}</h3>
-              <button onClick={() => setShowAddForm(false)} className="text-gray-400 p-1"><X size={18} /></button>
-            </div>
-            <form onSubmit={(e) => { e.preventDefault(); onAdd({id:'m-'+Date.now(), ...newCustomer, tags:newCustomer.tagsInput.split(/[ ,]/).filter(t=>t), createdAt: new Date().toISOString()}); setShowAddForm(false); }} className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                <input placeholder={t.name} required className="px-3 py-2.5 bg-gray-50 rounded-lg text-xs outline-none" value={newCustomer.name} onChange={e => setNewCustomer({...newCustomer, name: e.target.value})} />
-                <input placeholder={t.company} required className="px-3 py-2.5 bg-gray-50 rounded-lg text-xs outline-none" value={newCustomer.company} onChange={e => setNewCustomer({...newCustomer, company: e.target.value})} />
-              </div>
-              <input placeholder={t.tags} className="w-full px-3 py-2.5 bg-gray-50 rounded-lg text-xs outline-none" value={newCustomer.tagsInput} onChange={e => setNewCustomer({...newCustomer, tagsInput: e.target.value})} />
-              <button type="submit" className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-bold text-xs shadow-lg mt-2">{t.save}</button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

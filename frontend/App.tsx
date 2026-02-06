@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   PlusCircle, 
@@ -7,7 +7,6 @@ import {
   Zap,
   CalendarDays
 } from 'lucide-react';
-import DashboardPage from './pages/DashboardPage';
 import NewInteractionPage from './pages/NewInteractionPage';
 import InteractionDetailPage from './pages/InteractionDetailPage';
 import HistoryPage from './pages/HistoryPage';
@@ -22,8 +21,9 @@ import RegisterPage from './pages/RegisterPage';
 import { Interaction, Customer, Schedule, CoursePlan } from './types';
 import { translations, Language } from './translations';
 import { api, setToken, getToken } from './services/api';
+import { ThemeProvider } from './contexts/ThemeContext';
 
-export type Theme = 'classic' | 'dark' | 'minimal' | 'nature';
+export type Theme = 'classic' | 'dark' | 'orange' | 'nature';
 
 const MobileNavItem: React.FC<{ 
   icon: React.ReactNode; 
@@ -35,7 +35,7 @@ const MobileNavItem: React.FC<{
   const activeColor = {
     classic: 'text-blue-600',
     dark: 'text-blue-400',
-    minimal: 'text-slate-800',
+    orange: 'text-orange-600',
     nature: 'text-emerald-600'
   }[theme];
 
@@ -53,7 +53,7 @@ const MobileNavItem: React.FC<{
 };
 
 const VALID_LANGS: Language[] = ['zh', 'en', 'ja', 'ko'];
-const VALID_THEMES: Theme[] = ['classic', 'dark', 'minimal', 'nature'];
+const VALID_THEMES: Theme[] = ['classic', 'dark', 'orange', 'nature'];
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => !!getToken());
@@ -79,14 +79,27 @@ const App: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const t = translations[language] ?? translations.zh;
+  const isInitialLoadRef = useRef(true); // 跟踪是否是首次加载用户数据
 
   useEffect(() => {
     localStorage.setItem('language', language);
-  }, [language]);
+    // 如果已登录且不是首次加载，同步保存到数据库
+    if (isLoggedIn && user && !isInitialLoadRef.current) {
+      api.users.patchMe({ language }).catch((err) => {
+        console.error('保存语言设置失败:', err);
+      });
+    }
+  }, [language, isLoggedIn, user]);
 
   useEffect(() => {
     localStorage.setItem('theme', theme);
-  }, [theme]);
+    // 如果已登录且不是首次加载，同步保存到数据库
+    if (isLoggedIn && user && !isInitialLoadRef.current) {
+      api.users.patchMe({ theme }).catch((err) => {
+        console.error('保存主题设置失败:', err);
+      });
+    }
+  }, [theme, isLoggedIn, user]);
 
   useEffect(() => {
     if (avatar) localStorage.setItem('user_avatar', avatar);
@@ -114,6 +127,37 @@ const App: React.FC = () => {
       .then(([me, ints, custs, scheds, plans]) => {
         setUser({ email: me.email, displayName: me.displayName ?? me.email.split('@')[0] });
         if (me.avatar) setAvatar(me.avatar);
+        
+        // 从数据库加载用户的主题和语言设置
+        let themeUpdated = false;
+        let languageUpdated = false;
+        
+        if (me.theme && VALID_THEMES.includes(me.theme as Theme)) {
+          setTheme(me.theme as Theme);
+          themeUpdated = true;
+        }
+        if (me.language && VALID_LANGS.includes(me.language as Language)) {
+          setLanguage(me.language as Language);
+          languageUpdated = true;
+        }
+        
+        // 如果数据库中没有设置，但 localStorage 中有，则保存到数据库
+        if (!themeUpdated && (me.theme === null || me.theme === undefined)) {
+          const localTheme = localStorage.getItem('theme');
+          if (localTheme && VALID_THEMES.includes(localTheme as Theme)) {
+            api.users.patchMe({ theme: localTheme as Theme }).catch(() => {});
+          }
+        }
+        if (!languageUpdated && (me.language === null || me.language === undefined)) {
+          const localLang = localStorage.getItem('language');
+          if (localLang && VALID_LANGS.includes(localLang as Language)) {
+            api.users.patchMe({ language: localLang as Language }).catch(() => {});
+          }
+        }
+        
+        // 标记首次加载完成
+        isInitialLoadRef.current = false;
+        
         setInteractions(ints as Interaction[]);
         setCustomers(custs as Customer[]);
         setSchedules(scheds as Schedule[]);
@@ -137,6 +181,7 @@ const App: React.FC = () => {
     setToken(null);
     setUser(null);
     setIsLoggedIn(false);
+    isInitialLoadRef.current = true; // 重置初始化标志，下次登录时重新加载
     navigate('/login');
   };
 
@@ -220,6 +265,13 @@ const App: React.FC = () => {
     } catch {}
   };
 
+  const updateSchedule = async (id: string, updates: Partial<Schedule>) => {
+    try {
+      const updated = await api.schedules.update(id, updates);
+      setSchedules((prev) => prev.map((x) => (x.id === id ? (updated as Schedule) : x)));
+    } catch {}
+  };
+
   const saveCoursePlan = async (plan: CoursePlan) => {
     try {
       const created = await api.coursePlans.create({
@@ -239,12 +291,12 @@ const App: React.FC = () => {
   const themeStyles = {
     classic: { bg: 'bg-gray-50', primary: 'bg-blue-600', text: 'text-blue-600', border: 'border-blue-100', headerBg: 'bg-white' },
     dark: { bg: 'bg-gray-900', primary: 'bg-blue-500', text: 'text-blue-400', border: 'border-gray-800', headerBg: 'bg-gray-800' },
-    minimal: { bg: 'bg-gray-100', primary: 'bg-slate-800', text: 'text-slate-800', border: 'border-slate-200', headerBg: 'bg-white' },
+    orange: { bg: 'bg-orange-50', primary: 'bg-orange-600', text: 'text-orange-600', border: 'border-orange-100', headerBg: 'bg-white' },
     nature: { bg: 'bg-teal-50', primary: 'bg-emerald-600', text: 'text-emerald-600', border: 'border-emerald-100', headerBg: 'bg-white' }
   }[theme];
 
   if (!isLoggedIn && location.pathname !== '/login' && location.pathname !== '/register') {
-    return <LoginPage onLogin={handleLogin} />;
+    return <LoginPage onLogin={handleLogin} language={language} setLanguage={setLanguage} />;
   }
 
   if (isLoggedIn && dataLoading) {
@@ -259,11 +311,12 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className={`flex flex-col min-h-screen items-center justify-center transition-colors duration-500 ${themeStyles.bg}`}>
-      {/* transform 使内部 fixed 元素相对于本卡片定位，底部栏宽度/位置与卡片一致 */}
-<div className={`w-full max-w-[480px] h-screen md:h-[90vh] md:max-h-[850px] overflow-hidden flex flex-col relative md:rounded-[32px] md:shadow-2xl border ${themeStyles.border} ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-white'} [transform:translateZ(0)]`}>
-        
-        {isLoggedIn && (
+    <ThemeProvider theme={theme}>
+      <div className={`flex flex-col min-h-screen items-center justify-center transition-colors duration-500 ${themeStyles.bg}`}>
+        {/* transform 使内部 fixed 元素相对于本卡片定位，底部栏宽度/位置与卡片一致 */}
+  <div className={`w-full max-w-[480px] h-screen md:h-[90vh] md:max-h-[850px] overflow-hidden flex flex-col relative md:rounded-[32px] md:shadow-2xl border ${themeStyles.border} ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-white'} [transform:translateZ(0)]`}>
+          
+          {isLoggedIn && (
           <header className={`px-5 py-3.5 flex items-center justify-between border-b ${themeStyles.border} ${themeStyles.headerBg} shrink-0 z-10`}>
             <Link to="/" className="flex items-center gap-1.5">
               <div className={`${themeStyles.primary} p-1 rounded-lg`}>
@@ -302,12 +355,11 @@ const App: React.FC = () => {
         <main className={`flex-1 overflow-y-auto no-scrollbar ${isLoggedIn ? 'pb-24' : ''}`}>
           <div className={`${isLoggedIn ? 'px-5 py-5' : ''}`}>
             <Routes>
-              <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
-              <Route path="/register" element={<RegisterPage onLogin={handleLogin} />} />
+              <Route path="/login" element={<LoginPage onLogin={handleLogin} language={language} setLanguage={setLanguage} />} />
+              <Route path="/register" element={<RegisterPage onLogin={handleLogin} language={language} setLanguage={setLanguage} />} />
               <Route path="/" element={<NewInteractionPage onSave={saveInteraction} customers={customers} interactions={interactions} onAddCustomer={addCustomer} lang={language} />} />
               <Route path="/new" element={<NewInteractionPage onSave={saveInteraction} customers={customers} interactions={interactions} onAddCustomer={addCustomer} lang={language} />} />
-              <Route path="/dashboard" element={<DashboardPage interactions={interactions} customers={customers} schedules={schedules} user={user} lang={language} theme={theme} />} />
-              <Route path="/schedules" element={<SchedulePage schedules={schedules} customers={customers} onAddSchedule={addSchedule} onToggleStatus={toggleScheduleStatus} lang={language} />} />
+              <Route path="/schedules" element={<SchedulePage schedules={schedules} customers={customers} onAddSchedule={addSchedule} onToggleStatus={toggleScheduleStatus} onUpdateSchedule={updateSchedule} lang={language} />} />
               <Route path="/customers" element={<CustomerManagementPage customers={customers} interactions={interactions} onSync={saveCustomers} onAdd={addCustomer} lang={language} />} />
               <Route path="/customers/:id" element={<CustomerDetailPage customers={customers} interactions={interactions} schedules={schedules} coursePlans={coursePlans} onSaveCoursePlan={saveCoursePlan} onAddSchedule={addSchedule} onUpdateCustomer={updateCustomer} lang={language} />} />
               <Route path="/roleplay/:customerId" element={<RolePlayPage customers={customers} interactions={interactions} lang={language} />} />
@@ -343,6 +395,7 @@ const App: React.FC = () => {
         )}
       </div>
     </div>
+    </ThemeProvider>
   );
 };
 

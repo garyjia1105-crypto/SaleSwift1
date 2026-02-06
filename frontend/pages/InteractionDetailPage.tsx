@@ -27,6 +27,7 @@ import {
 import { Interaction, Schedule } from '../types';
 import { deepDiveIntoInterest, continueDeepDiveIntoInterest, askAboutInteraction } from '../services/aiService';
 import { translations, Language } from '../translations';
+import { useTheme } from '../contexts/ThemeContext';
 
 const DetailSection: React.FC<{ title: string, icon: React.ReactNode, children: React.ReactNode, variant?: 'primary' | 'secondary' | 'default' }> = ({ title, icon, children, variant = 'default' }) => {
   const headerClass = variant === 'primary' 
@@ -108,6 +109,7 @@ interface Props {
 const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAddSchedule, lang }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { colors } = useTheme();
   const t = translations[lang].interaction_detail;
   const item = interactions.find(i => i.id === id);
   
@@ -122,6 +124,7 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
   const [assistantHistory, setAssistantHistory] = useState<{ role: 'user' | 'model', text: string }[]>([]);
   const [assistantInput, setAssistantInput] = useState('');
   const [isAssistantThinking, setIsAssistantThinking] = useState(false);
+  const [addingAction, setAddingAction] = useState<string | null>(null);
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const assistantChatEndRef = useRef<HTMLDivElement>(null);
@@ -151,6 +154,17 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
     }
   }, [assistantHistory, isAssistantThinking]);
 
+  // 当某个「下一步」被添加为日程后，自动清除对应的 loading 状态
+  useEffect(() => {
+    if (!addingAction) return;
+    const exists = schedules.some(
+      (s) => s.customerId === item.customerId && s.title === addingAction
+    );
+    if (exists) {
+      setAddingAction(null);
+    }
+  }, [addingAction, schedules, item.customerId]);
+
   if (!item) return (
     <div className="text-center py-20 space-y-4">
       <p className="text-gray-500 font-medium">{t.not_found}</p>
@@ -167,6 +181,7 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
     if (!onAddSchedule || isScheduled(step.action)) return;
     let date = step.dueDate || "";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) date = new Date().toISOString().split('T')[0];
+    setAddingAction(step.action);
     onAddSchedule({
       id: `sched-auto-${Date.now()}`,
       customerId: item.customerId,
@@ -249,7 +264,7 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
       <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-6 md:mb-8">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">{item.customerProfile.name}</h2>
+            <h2 className={`text-2xl md:text-3xl font-black tracking-tight ${colors.text.primary}`}>{item.customerProfile.name}</h2>
             <span className="px-2.5 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-full text-[10px] font-bold">
               {item.intelligence.currentStage}
             </span>
@@ -359,10 +374,23 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
                     {onAddSchedule && (
                       <button 
                         onClick={() => handleAddToSchedule(step)} 
-                        disabled={alreadyScheduled}
-                        className={`p-2 rounded-xl transition-all shrink-0 ${alreadyScheduled ? 'text-emerald-500' : 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100 active:scale-90 shadow-sm'}`}
+                        disabled={alreadyScheduled || addingAction === step.action}
+                        className={`p-2 rounded-xl transition-all shrink-0 ${
+                          alreadyScheduled
+                            ? 'text-emerald-500'
+                            : 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100 active:scale-90 shadow-sm disabled:opacity-60'
+                        }`}
                       >
-                        {alreadyScheduled ? <div className="flex items-center gap-1"><span className="text-[8px] font-black uppercase">{t.scheduled}</span><CheckCircle2 size={16} /></div> : <CalendarPlus size={18} />}
+                        {alreadyScheduled ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[8px] font-black uppercase">{t.scheduled}</span>
+                            <CheckCircle2 size={16} />
+                          </div>
+                        ) : addingAction === step.action ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <CalendarPlus size={18} />
+                        )}
                       </button>
                     )}
                   </div>

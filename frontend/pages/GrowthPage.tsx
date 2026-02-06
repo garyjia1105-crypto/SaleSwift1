@@ -3,8 +3,10 @@ import React from 'react';
 import { Interaction } from '../types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { Trophy, TrendingUp, BookOpen, Star } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 const GrowthPage: React.FC<{ interactions: Interaction[] }> = ({ interactions }) => {
+  const { colors } = useTheme();
   const growthData = [
     { month: '1月', skillLevel: 45, closingRate: 15 },
     { month: '2月', skillLevel: 52, closingRate: 18 },
@@ -17,7 +19,7 @@ const GrowthPage: React.FC<{ interactions: Interaction[] }> = ({ interactions })
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <header>
-        <h2 className="text-base font-bold text-gray-900 leading-none">您的销售成长</h2>
+        <h2 className={`text-base font-bold leading-none ${colors.text.primary}`}>您的销售成长</h2>
         <p className="text-[10px] text-gray-500 font-medium mt-1">追踪您的技能进阶和转化率优化成果。</p>
       </header>
 
