@@ -178,7 +178,7 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2 mt-4">
         {sortedSchedules.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-100">
             <CalendarDays size={20} className="mx-auto text-gray-200 mb-1" />
@@ -226,11 +226,11 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
           <button
             onClick={recording ? stopVoiceInput : startVoiceInput}
             disabled={isProcessing}
-            className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all btn-active-scale ${
-              recording ? 'bg-red-500 text-white' : isProcessing ? 'bg-gray-400 text-white' : 'bg-gray-100 text-gray-600'
+            className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all btn-active-scale shadow-lg ${
+              recording ? 'bg-red-500 text-white' : isProcessing ? 'bg-gray-400 text-white' : 'bg-blue-600 text-white'
             }`}
           >
-            {isProcessing ? <Loader2 className="animate-spin" size={20} /> : recording ? <X size={20} /> : <Mic size={20} />}
+            {isProcessing ? <Loader2 className="animate-spin" size={22} /> : recording ? <X size={22} /> : <Mic size={22} />}
           </button>
           <button
             onClick={() => setShowAddForm(v => !v)}

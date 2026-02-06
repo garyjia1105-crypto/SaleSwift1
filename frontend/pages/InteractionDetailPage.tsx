@@ -480,7 +480,7 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
                   </div>
                   <div className="text-center">
                     <p className="text-sm font-black text-gray-900 tracking-tight">{t.dive_loading}</p>
-                    <p className="text-[10px] text-gray-400 mt-1 font-bold uppercase tracking-widest animate-pulse">正在调取行业标杆库与专家模型...</p>
+                    <p className="text-[10px] text-gray-400 mt-1 font-bold uppercase tracking-widest animate-pulse">正在分析中，请稍候...</p>
                   </div>
                 </div>
               ) : (

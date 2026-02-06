@@ -285,11 +285,11 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
             type="button"
             onClick={recording ? stopRecording : startRecording}
             disabled={isTranscribing}
-            className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all btn-active-scale ${
-              recording ? 'bg-red-500 text-white' : isTranscribing ? 'bg-gray-400 text-white' : 'bg-gray-100 text-gray-600'
+            className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all btn-active-scale shadow-lg ${
+              recording ? 'bg-red-500 text-white' : isTranscribing ? 'bg-gray-400 text-white' : 'bg-blue-600 text-white'
             }`}
           >
-            {isTranscribing ? <Loader2 className="animate-spin" size={20} /> : <Mic size={20} />}
+            {isTranscribing ? <Loader2 className="animate-spin" size={22} /> : <Mic size={22} />}
           </button>
           <button
             type="button"
