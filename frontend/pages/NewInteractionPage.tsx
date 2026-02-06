@@ -131,7 +131,7 @@ const getDateRange = (type: string): { startDate: string; endDate: string } => {
 const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, onAddCustomer, lang }) => {
   const t = translations[lang].new;
   const tHistory = (translations[lang] ?? translations.zh).history;
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
   const [input, setInput] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -486,16 +486,26 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
                 to={`/interaction/${item.id}`}
                 className="relative flex items-center gap-3 p-3.5 bg-white border border-gray-100 rounded-xl shadow-sm hover:bg-blue-50/40 active:bg-blue-50/60 transition-colors touch-manipulation"
               >
-                <div className={`w-10 h-10 rounded-xl ${colors.badge.primary} flex items-center justify-center font-bold text-sm shrink-0`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
+                  theme === 'dark' ? 'bg-blue-500/20 text-blue-400' :
+                  theme === 'orange' ? 'bg-orange-50 text-orange-600' :
+                  theme === 'nature' ? 'bg-emerald-50 text-emerald-600' :
+                  'bg-blue-50 text-blue-600'
+                }`}>
                   {(item.customerProfile?.name ?? '?').charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 pr-16">
-                    <span className="font-bold text-sm text-gray-900 truncate">{item.customerProfile?.name ?? '—'}</span>
-                    <span className="text-[10px] text-gray-400 truncate">{item.customerProfile?.company ?? '—'}</span>
+                    <span className={`font-bold text-sm truncate ${colors.text.primary}`}>{item.customerProfile?.name ?? '—'}</span>
+                    <span className={`text-[10px] truncate ${colors.text.muted}`}>{item.customerProfile?.company ?? '—'}</span>
                   </div>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700">
+                    <span className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                      theme === 'dark' ? 'bg-blue-500/20 text-blue-400' :
+                      theme === 'orange' ? 'bg-orange-50 text-orange-600' :
+                      theme === 'nature' ? 'bg-emerald-50 text-emerald-600' :
+                      'bg-blue-50 text-blue-600'
+                    }`}>
                       {stage}
                     </span>
                     <span className={`inline-flex items-center gap-1 text-[10px] font-bold ${sc.text}`}>

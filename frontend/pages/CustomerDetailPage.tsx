@@ -39,7 +39,7 @@ interface Props {
 
 const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedules, coursePlans, onSaveCoursePlan, onAddSchedule, onUpdateCustomer, lang }) => {
   const t = translations[lang].customer_detail;
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
@@ -142,7 +142,12 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
       <div className="bg-white rounded-2xl p-5 border border-gray-100 soft-shadow">
         <div className="flex justify-between items-start mb-4">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center text-lg font-black shrink-0">
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black shrink-0 ${
+              theme === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+              theme === 'orange' ? 'bg-orange-50 text-orange-600 border border-orange-200' :
+              theme === 'nature' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' :
+              'bg-blue-50 text-blue-600 border border-blue-200'
+            }`}>
               {(editForm.name || customer.name).trim().charAt(0) || '?'}
             </div>
             <div className="flex-1 min-w-0">
@@ -194,12 +199,22 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
         <div className="flex flex-wrap items-center gap-1 p-2 bg-gray-50/50 rounded-xl border border-gray-50 mb-4">
           <Tags size={10} className="text-gray-300 mx-1 shrink-0" />
           {customer.tags.map(tag => (
-            <span key={tag} className="flex items-center gap-1 px-1.5 py-0.5 bg-white border border-blue-50 text-blue-500 rounded-md text-[8px] font-bold">
+            <span key={tag} className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[8px] font-bold ${
+              theme === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+              theme === 'orange' ? 'bg-orange-50 text-orange-600 border border-orange-200' :
+              theme === 'nature' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' :
+              'bg-blue-50 text-blue-600 border border-blue-200'
+            }`}>
               {tag} <button onClick={() => onUpdateCustomer({...customer, tags: customer.tags.filter(t=>t!==tag)})} className="text-gray-300 hover:text-red-500"><X size={8} /></button>
             </span>
           ))}
           {showTagInput ? (
-            <input autoFocus className="px-1.5 py-0.5 text-[8px] border border-blue-200 rounded-md outline-none bg-white w-14" onKeyDown={(e)=>{if(e.key==='Enter' && newTagText.trim()){onUpdateCustomer({...customer, tags: [...new Set([...customer.tags, newTagText.trim()])]}); setNewTagText(''); setShowTagInput(false);}}} value={newTagText} onChange={e=>setNewTagText(e.target.value)} onBlur={()=>{if(newTagText.trim()){onUpdateCustomer({...customer, tags: [...new Set([...customer.tags, newTagText.trim()])]}); setNewTagText('');} setShowTagInput(false);}} />
+            <input autoFocus className={`px-1.5 py-0.5 text-[8px] border rounded-md outline-none bg-white w-14 ${
+              theme === 'dark' ? 'border-blue-500/30' :
+              theme === 'orange' ? 'border-orange-200' :
+              theme === 'nature' ? 'border-emerald-200' :
+              'border-blue-200'
+            }`} onKeyDown={(e)=>{if(e.key==='Enter' && newTagText.trim()){onUpdateCustomer({...customer, tags: [...new Set([...customer.tags, newTagText.trim()])]}); setNewTagText(''); setShowTagInput(false);}}} value={newTagText} onChange={e=>setNewTagText(e.target.value)} onBlur={()=>{if(newTagText.trim()){onUpdateCustomer({...customer, tags: [...new Set([...customer.tags, newTagText.trim()])]}); setNewTagText('');} setShowTagInput(false);}} />
           ) : (
             <button onClick={()=>setShowTagInput(true)} className="flex items-center gap-1 px-1.5 py-0.5 border border-dashed border-gray-200 text-gray-400 rounded-md text-[8px] font-bold btn-active-scale"><Plus size={8} /> {t.tags_label}</button>
           )}
@@ -342,7 +357,7 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
           <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
             <MessageCircle size={10}/> {t.interactions}
           </h3>
-          <Link to="/new" className="text-[9px] font-bold text-blue-600">{t.add_schedule}</Link>
+          <Link to="/new" className={`text-[9px] font-bold ${colors.text.accent}`}>{t.add_interaction || t.add_schedule}</Link>
         </div>
         {customerInteractions.length === 0 ? (
           <div className="bg-gray-50 py-6 rounded-2xl border border-dashed border-gray-100 text-center text-[8px] text-gray-300 font-bold tracking-widest uppercase">
@@ -371,7 +386,7 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
           <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
             <Clock size={10}/> {t.schedules}
           </h3>
-          <button onClick={()=>setShowAddSchedule(true)} className="text-[9px] font-bold text-blue-600">{t.add_schedule}</button>
+          <button onClick={()=>setShowAddSchedule(true)} className={`text-[9px] font-bold ${colors.text.accent}`}>{t.add_schedule}</button>
         </div>
         <div className="space-y-2">
           {customerSchedules.filter(s=>s.status==='pending').length === 0 ? (
@@ -393,17 +408,22 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
       </div>
 
       {showAddSchedule && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end">
-          <div className="bg-white rounded-t-3xl w-full p-6 pb-8 animate-in slide-in-from-bottom duration-300">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xs font-bold">{t.quick_schedule}</h3>
-              <button onClick={()=>setShowAddSchedule(false)} className="text-gray-400 p-1"><X size={16}/></button>
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50">
+          <div className="fixed left-0 right-0 bottom-14 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] py-2 px-3">
+            <div className="mb-3 pt-2 border-t border-emerald-100 bg-emerald-50/50 rounded-xl px-3 pb-3">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-[10px] font-bold text-emerald-700">{t.quick_schedule || t.manual}</span>
+                <button type="button" onClick={() => setShowAddSchedule(false)} className="text-emerald-600 p-1 rounded hover:bg-emerald-100"><X size={14} /></button>
+              </div>
+              <form onSubmit={(e)=>{e.preventDefault(); onAddSchedule({id:'qs-'+Date.now(), ...newSchedule, customerId: customer.id, status:'pending'}); setShowAddSchedule(false); setNewSchedule({ title: '', date: '', time: '' });}} className="space-y-2.5">
+                <input required placeholder={t.placeholder_title || t.subject} className="w-full px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" value={newSchedule.title} onChange={e=>setNewSchedule({...newSchedule, title: e.target.value})} />
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="date" required className="px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" value={newSchedule.date} onChange={e=>setNewSchedule({...newSchedule, date: e.target.value})} />
+                  <input type="time" className="px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" value={newSchedule.time} onChange={e=>setNewSchedule({...newSchedule, time: e.target.value})} />
+                </div>
+                <button type="submit" className="w-full py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-xs btn-active-scale">{t.confirm}</button>
+              </form>
             </div>
-            <form onSubmit={(e)=>{e.preventDefault(); onAddSchedule({id:'qs-'+Date.now(), ...newSchedule, customerId: customer.id, status:'pending'}); setShowAddSchedule(false);}} className="space-y-3">
-              <input required placeholder={t.subject} className="w-full px-3 py-2 bg-gray-50 rounded-lg text-xs outline-none" value={newSchedule.title} onChange={e=>setNewSchedule({...newSchedule, title: e.target.value})} />
-              <input type="date" required className="w-full px-3 py-2 bg-gray-50 rounded-lg text-xs outline-none" value={newSchedule.date} onChange={e=>setNewSchedule({...newSchedule, date: e.target.value})} />
-              <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-xs btn-active-scale mt-1">{t.confirm}</button>
-            </form>
           </div>
         </div>
       )}

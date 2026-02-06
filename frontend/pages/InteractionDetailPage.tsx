@@ -109,7 +109,7 @@ interface Props {
 const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAddSchedule, lang }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
   const t = translations[lang].interaction_detail;
   const item = interactions.find(i => i.id === id);
   
@@ -265,7 +265,12 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h2 className={`text-2xl md:text-3xl font-black tracking-tight ${colors.text.primary}`}>{item.customerProfile.name}</h2>
-            <span className="px-2.5 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-full text-[10px] font-bold">
+            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+              theme === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+              theme === 'orange' ? 'bg-orange-50 text-orange-600 border border-orange-200' :
+              theme === 'nature' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' :
+              'bg-blue-50 text-blue-600 border border-blue-100'
+            }`}>
               {item.intelligence.currentStage}
             </span>
           </div>

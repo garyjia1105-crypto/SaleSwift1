@@ -129,7 +129,7 @@ const getDateRange = (type: string): { startDate: string; endDate: string } => {
 
 const HistoryPage: React.FC<{ interactions: Interaction[]; lang: Language }> = ({ interactions, lang }) => {
   const t = translations[lang].history;
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
   const [isVoiceProcessing, setIsVoiceProcessing] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -432,13 +432,13 @@ const HistoryPage: React.FC<{ interactions: Interaction[]; lang: Language }> = (
             <button 
               type="button" 
               onClick={() => { setShowFilter(!showFilter); setShowSort(false); }}
-              className={`w-full flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white border rounded-xl hover:bg-gray-50 text-gray-600 text-xs font-medium touch-manipulation min-h-[44px] ${
-                (filterStage || filterSentiment) ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+              className={`w-full flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white border rounded-xl ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} text-gray-600 text-xs font-medium touch-manipulation min-h-[44px] ${
+                (filterStage || filterSentiment) ? `${colors.primary.border} ${colors.badge.primary.replace(' text-', ' ').replace(' border ', ' ')}` : 'border-gray-200'
               }`}
             >
               <Filter size={16} />
               {t.filter}
-              {(filterStage || filterSentiment) && <span className="ml-1 w-1.5 h-1.5 bg-blue-500 rounded-full" />}
+              {(filterStage || filterSentiment) && <span className={`ml-1 w-1.5 h-1.5 rounded-full ${colors.primary.bg}`} />}
             </button>
             {showFilter && (
               <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-50 p-3 space-y-3">
@@ -449,7 +449,7 @@ const HistoryPage: React.FC<{ interactions: Interaction[]; lang: Language }> = (
                       type="button"
                       onClick={() => setFilterStage('')}
                       className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
-                        !filterStage ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
+                        !filterStage ? `${colors.badge.primary.replace(' border ', ' ')} font-medium` : `${colors.text.secondary} ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`
                       }`}
                     >
                       {t.filter_all || '全部'}
@@ -460,7 +460,7 @@ const HistoryPage: React.FC<{ interactions: Interaction[]; lang: Language }> = (
                         type="button"
                         onClick={() => setFilterStage(stage)}
                         className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
-                          filterStage === stage ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
+                          filterStage === stage ? `${colors.badge.primary.replace(' border ', ' ')} font-medium` : `${colors.text.secondary} ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`
                         }`}
                       >
                         {stage}
@@ -475,7 +475,7 @@ const HistoryPage: React.FC<{ interactions: Interaction[]; lang: Language }> = (
                       type="button"
                       onClick={() => setFilterSentiment('')}
                       className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
-                        !filterSentiment ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
+                        !filterSentiment ? `${colors.badge.primary.replace(' border ', ' ')} font-medium` : `${colors.text.secondary} ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`
                       }`}
                     >
                       {t.filter_all || '全部'}
@@ -486,7 +486,7 @@ const HistoryPage: React.FC<{ interactions: Interaction[]; lang: Language }> = (
                         type="button"
                         onClick={() => setFilterSentiment(sentiment)}
                         className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
-                          filterSentiment === sentiment ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
+                          filterSentiment === sentiment ? `${colors.badge.primary.replace(' border ', ' ')} font-medium` : `${colors.text.secondary} ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`
                         }`}
                       >
                         {sentiment}
@@ -501,8 +501,8 @@ const HistoryPage: React.FC<{ interactions: Interaction[]; lang: Language }> = (
             <button 
               type="button" 
               onClick={() => { setShowSort(!showSort); setShowFilter(false); }}
-              className={`w-full flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white border rounded-xl hover:bg-gray-50 text-gray-600 text-xs font-medium touch-manipulation min-h-[44px] ${
-                sortBy !== 'date' || sortOrder !== 'desc' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+              className={`w-full flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white border rounded-xl ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} text-gray-600 text-xs font-medium touch-manipulation min-h-[44px] ${
+                sortBy !== 'date' || sortOrder !== 'desc' ? `${colors.primary.border} ${colors.badge.primary.replace(' text-', ' ').replace(' border ', ' ')}` : 'border-gray-200'
               }`}
             >
               <ArrowUpDown size={16} />
@@ -517,7 +517,7 @@ const HistoryPage: React.FC<{ interactions: Interaction[]; lang: Language }> = (
                       type="button"
                       onClick={() => { setSortBy('date'); setSortOrder('desc'); }}
                       className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
-                        sortBy === 'date' && sortOrder === 'desc' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
+                        sortBy === 'date' && sortOrder === 'desc' ? `${colors.badge.primary.replace(' border ', ' ')} font-medium` : `${colors.text.secondary} ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`
                       }`}
                     >
                       {t.date} ↓
@@ -526,7 +526,7 @@ const HistoryPage: React.FC<{ interactions: Interaction[]; lang: Language }> = (
                       type="button"
                       onClick={() => { setSortBy('date'); setSortOrder('asc'); }}
                       className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
-                        sortBy === 'date' && sortOrder === 'asc' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
+                        sortBy === 'date' && sortOrder === 'asc' ? `${colors.badge.primary.replace(' border ', ' ')} font-medium` : `${colors.text.secondary} ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`
                       }`}
                     >
                       {t.date} ↑
@@ -535,7 +535,7 @@ const HistoryPage: React.FC<{ interactions: Interaction[]; lang: Language }> = (
                       type="button"
                       onClick={() => { setSortBy('name'); setSortOrder('asc'); }}
                       className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
-                        sortBy === 'name' && sortOrder === 'asc' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
+                        sortBy === 'name' && sortOrder === 'asc' ? `${colors.badge.primary.replace(' border ', ' ')} font-medium` : `${colors.text.secondary} ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`
                       }`}
                     >
                       {t.customer_company} A-Z
@@ -544,7 +544,7 @@ const HistoryPage: React.FC<{ interactions: Interaction[]; lang: Language }> = (
                       type="button"
                       onClick={() => { setSortBy('name'); setSortOrder('desc'); }}
                       className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
-                        sortBy === 'name' && sortOrder === 'desc' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
+                        sortBy === 'name' && sortOrder === 'desc' ? `${colors.badge.primary.replace(' border ', ' ')} font-medium` : `${colors.text.secondary} ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`
                       }`}
                     >
                       {t.customer_company} Z-A
@@ -583,16 +583,26 @@ const HistoryPage: React.FC<{ interactions: Interaction[]; lang: Language }> = (
                 to={`/interaction/${item.id}`}
                 className="relative flex items-center gap-3 p-3.5 bg-white border border-gray-100 rounded-xl shadow-sm hover:bg-blue-50/40 active:bg-blue-50/60 transition-colors touch-manipulation"
               >
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
+                  theme === 'dark' ? 'bg-blue-500/20 text-blue-400' :
+                  theme === 'orange' ? 'bg-orange-50 text-orange-600' :
+                  theme === 'nature' ? 'bg-emerald-50 text-emerald-600' :
+                  'bg-blue-50 text-blue-600'
+                }`}>
                   {(item.customerProfile?.name ?? '?').charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 pr-16">
-                    <span className="font-bold text-sm text-gray-900 truncate">{item.customerProfile?.name ?? '—'}</span>
-                    <span className="text-[10px] text-gray-400 truncate">{item.customerProfile?.company ?? '—'}</span>
+                    <span className={`font-bold text-sm truncate ${colors.text.primary}`}>{item.customerProfile?.name ?? '—'}</span>
+                    <span className={`text-[10px] truncate ${colors.text.muted}`}>{item.customerProfile?.company ?? '—'}</span>
                   </div>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700">
+                    <span className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                      theme === 'dark' ? 'bg-blue-500/20 text-blue-400' :
+                      theme === 'orange' ? 'bg-orange-50 text-orange-600' :
+                      theme === 'nature' ? 'bg-emerald-50 text-emerald-600' :
+                      'bg-blue-50 text-blue-600'
+                    }`}>
                       {stage}
                     </span>
                     <span className={`inline-flex items-center gap-1 text-[10px] font-bold ${sc.text}`}>

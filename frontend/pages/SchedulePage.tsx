@@ -232,7 +232,7 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
                     <h4 className={`text-xs font-bold truncate ${item.status==='completed'?'line-through text-gray-400':'text-gray-900'}`}>{item.title}</h4>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="flex items-center gap-0.5 text-[8px] text-gray-400 font-medium"><Calendar size={8} /> {item.date}{item.time ? ` ${item.time}` : ''}</span>
-                      {item.customerId && <Link to={`/customers/${item.customerId}`} className="flex items-center gap-0.5 text-[8px] text-blue-600 font-bold truncate"><User size={8} /> {customers.find(c=>c.id===item.customerId)?.name}</Link>}
+                      {item.customerId && <Link to={`/customers/${item.customerId}`} className={`flex items-center gap-0.5 text-[8px] font-bold truncate ${colors.text.accent}`}><User size={8} /> {customers.find(c=>c.id===item.customerId)?.name}</Link>}
                     </div>
                   </div>
                   <button 
