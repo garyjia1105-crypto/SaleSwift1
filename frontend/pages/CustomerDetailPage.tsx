@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Customer, Interaction, Schedule, CoursePlan } from '../types';
 import { 
@@ -64,7 +64,17 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
   });
 
   const customerInteractions = interactions.filter(i => i.customerId === id);
-  const customerSchedules = schedules.filter(s => s.customerId === id);
+  const customerSchedules = useMemo(() => {
+    const list = schedules.filter(s => s.customerId === id);
+    const pending = list.filter(s => s.status === 'pending');
+    const completed = list.filter(s => s.status === 'completed');
+    const completedSorted = [...completed].sort((a, b) => {
+      const ta = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      const tb = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      return ta - tb;
+    });
+    return [...pending, ...completedSorted];
+  }, [schedules, id]);
   const currentPlan = coursePlans.find(p => p.customerId === id);
 
   // Check if it's a "training" customer (by tags)

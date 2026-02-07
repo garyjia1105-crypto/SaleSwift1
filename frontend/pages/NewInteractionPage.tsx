@@ -145,6 +145,7 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
   const [analyzeError, setAnalyzeError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
+  const [showInterviewDialog, setShowInterviewDialog] = useState(false);
   const [dateRangeType, setDateRangeType] = useState<string>('today');
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
@@ -186,9 +187,11 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
         };
         if (selectedCustomerId) {
           await finalizeSave(result, selectedCustomerId);
+          setShowInterviewDialog(false);
           return;
         }
         setPendingResult(result);
+        setShowInterviewDialog(false);
         setNewCustomerData({
           name: aiResult.customerProfile.name || '',
           company: aiResult.customerProfile.company || ''
@@ -209,6 +212,7 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
       const saved = await onSave({ ...result, customerId });
       if (saved) {
         setShowLinkModal(false);
+        setShowInterviewDialog(false);
         setPendingResult(null);
         setInput('');
         setSelectedFile(null);
@@ -531,121 +535,138 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
       </main>
       </div>
 
-      {/* 底部输入栏：不放在 page-transition 内，避免 transform 导致首帧错位 */}
-      <div className="fixed left-0 right-0 bottom-14 z-40 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] py-2 px-3">
-        {analyzeError && (
-          <p className="text-[10px] text-rose-600 font-medium mb-2 px-1">
-            {analyzeError.includes('AI quota exceeded') || analyzeError.includes('Try again later')
-              ? '当前请求过多，请稍后再试'
-              : analyzeError}
-          </p>
-        )}
-        {selectedFile && (
-          <div className="flex items-center justify-between mb-2 px-2 py-1.5 bg-emerald-50 rounded-lg border border-emerald-100">
-            <div className="flex items-center gap-2 min-w-0">
-              <FileAudio size={14} className="text-emerald-600 shrink-0" />
-              <span className="text-[10px] font-medium text-emerald-800 truncate">
-                {selectedFile.file.name || '音频已选'}
-              </span>
-            </div>
-            <button type="button" onClick={removeFile} className="p-1 text-emerald-500 hover:text-emerald-700">
-              <Trash2 size={14} />
-            </button>
-          </div>
-        )}
-        <div className="relative mb-2">
-          <textarea
-            ref={textareaRef}
-            className={`w-full min-h-[44px] ${recording || input.trim().length > 0 ? 'max-h-96' : 'max-h-24'} py-2.5 pl-3 pr-12 ${colors.bg.input} ${colors.border.light} rounded-xl text-xs font-medium resize-none focus:ring-1 ${colors.primary.ring} outline-none`}
-            placeholder={t.placeholder}
-            value={input}
-            onChange={(e) => {
-              const newValue = e.target.value;
-              setInput(newValue);
-              setAnalyzeError('');
-              // 自动调整高度
-              if (textareaRef.current) {
-                textareaRef.current.style.height = 'auto';
-                const scrollHeight = textareaRef.current.scrollHeight;
-                const maxHeight = recording || newValue.trim().length > 0 ? 384 : 96; // max-h-96 = 384px, max-h-24 = 96px
-                textareaRef.current.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
-              }
-            }}
-            rows={2}
-          />
+      {/* 底部悬浮图标：靠右 */}
+      <div className="fixed left-0 right-0 bottom-20 z-40 flex justify-end gap-3 px-4 pointer-events-none">
+        <div className="flex items-center gap-3 pointer-events-auto">
           <button
             type="button"
-            onClick={handleAnalyze}
-            disabled={isAnalyzing || !hasContent}
-            className={`absolute right-2 top-1/2 -translate-y-1/2 shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all btn-active-scale ${
-              hasContent ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-400'
-            }`}
+            onClick={() => { setShowInterviewDialog(true); }}
+            className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all btn-active-scale ${colors.button.secondary}`}
+            title={t.manual_input || '手动输入'}
+            aria-label={t.manual_input || '手动输入'}
           >
-            {isAnalyzing ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={20} />}
+            <FileText size={22} className={colors.text.accent} />
           </button>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className={`relative min-w-[100px] min-h-[40px] ${colors.badge.primary} rounded-xl flex items-center pl-2 pr-7 py-2 ${colors.border.accent} shrink-0`}>
-            <UserCheck className={`${colors.text.accent} shrink-0`} size={12} />
-            <select
-              className="flex-1 min-w-0 bg-transparent text-[10px] font-bold text-blue-900 outline-none appearance-none"
-              value={selectedCustomerId}
-              onChange={(e) => setSelectedCustomerId(e.target.value)}
-            >
-              <option value="">{t.match_customer}</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                  {c.company ? ` · ${c.company}` : ''}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none" size={12} />
-          </div>
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all btn-active-scale ml-auto"
+            onClick={() => { setShowInterviewDialog(true); setTimeout(() => fileInputRef.current?.click(), 100); }}
+            className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all btn-active-scale ${colors.button.secondary}`}
+            title={t.upload}
+            aria-label={t.upload}
           >
-            <Upload size={18} />
+            <Upload size={22} className={colors.text.accent} />
           </button>
-          {mediaRecorderRef.current && (mediaRecorderRef.current.state === 'recording' || mediaRecorderRef.current.state === 'paused') && (
-            <button
-              type="button"
-              onClick={finishRecording}
-              disabled={isTranscribing}
-              className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all btn-active-scale"
-              title="完成录音"
-            >
-              <Square size={18} />
-            </button>
-          )}
           <button
             type="button"
-            onClick={() => {
-              if (recording) {
-                pauseRecording();
-              } else {
-                startRecording();
-              }
-            }}
-            disabled={isTranscribing}
-            className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all btn-active-scale shadow-lg ${
-              recording ? 'bg-red-500 text-white' : isTranscribing ? 'bg-gray-400 text-white' : colors.button.primary
-            }`}
+            onClick={() => { setShowInterviewDialog(true); }}
+            className={`shrink-0 w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-all btn-active-scale ${colors.button.primary} ring-2 ring-white/50`}
+            title={t.record}
+            aria-label={t.record}
           >
-            {isTranscribing ? (
-              <Loader2 className="animate-spin" size={22} />
-            ) : recording ? (
-              <Pause size={22} />
-            ) : mediaRecorderRef.current?.state === 'paused' ? (
-              <Play size={22} />
-            ) : (
-              <Mic size={22} />
-            )}
+            <Mic size={24} className="text-white" />
           </button>
         </div>
       </div>
+
+      {/* 访谈内容对话框 */}
+      {showInterviewDialog && (
+        <>
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50" onClick={() => setShowInterviewDialog(false)} aria-hidden />
+          <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-24 pointer-events-none">
+            <div
+              className={`w-full max-w-[min(100%,28rem)] max-h-[85vh] flex flex-col rounded-t-3xl shadow-2xl pointer-events-auto animate-in slide-in-from-bottom duration-300 ${colors.bg.card} border ${colors.border.default}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-3 border-b shrink-0 border-gray-200/50">
+                <span className={`text-sm font-bold ${colors.text.primary}`}>{t.manual_input || '访谈内容'}</span>
+                <button type="button" onClick={() => setShowInterviewDialog(false)} className={`p-1.5 rounded-lg ${colors.bg.hover}`} aria-label={t.cancel}>
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                {analyzeError && (
+                  <p className="text-[10px] text-rose-600 font-medium px-1">
+                    {analyzeError.includes('AI quota exceeded') || analyzeError.includes('Try again later') ? '当前请求过多，请稍后再试' : analyzeError}
+                  </p>
+                )}
+                {selectedFile && (
+                  <div className="flex items-center justify-between px-2 py-1.5 bg-emerald-50 rounded-lg border border-emerald-100">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileAudio size={14} className="text-emerald-600 shrink-0" />
+                      <span className="text-[10px] font-medium text-emerald-800 truncate">{selectedFile.file.name || '音频已选'}</span>
+                    </div>
+                    <button type="button" onClick={removeFile} className="p-1 text-emerald-500 hover:text-emerald-700"><Trash2 size={14} /></button>
+                  </div>
+                )}
+                <div className="relative">
+                  <textarea
+                    ref={textareaRef}
+                    className={`w-full min-h-[80px] max-h-48 py-2.5 pl-3 pr-12 ${colors.bg.input} ${colors.border.light} rounded-xl text-xs font-medium resize-none focus:ring-1 ${colors.primary.ring} outline-none`}
+                    placeholder={t.placeholder}
+                    value={input}
+                    onChange={(e) => {
+                      const newValue = e.target.value;
+                      setInput(newValue);
+                      setAnalyzeError('');
+                      if (textareaRef.current) {
+                        textareaRef.current.style.height = 'auto';
+                        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 192)}px`;
+                      }
+                    }}
+                    rows={3}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAnalyze}
+                    disabled={isAnalyzing || !hasContent}
+                    className={`absolute right-2 top-1/2 -translate-y-1/2 shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all btn-active-scale ${hasContent ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-400'}`}
+                  >
+                    {isAnalyzing ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={20} />}
+                  </button>
+                </div>
+                <div className={`relative min-w-0 min-h-[40px] ${colors.badge.primary} rounded-xl flex items-center pl-2 pr-7 py-2 ${colors.border.accent}`}>
+                  <UserCheck className={`${colors.text.accent} shrink-0`} size={12} />
+                  <select
+                    className="flex-1 min-w-0 bg-transparent text-[10px] font-bold outline-none appearance-none"
+                    value={selectedCustomerId}
+                    onChange={(e) => setSelectedCustomerId(e.target.value)}
+                    style={{ color: 'inherit' }}
+                  >
+                    <option value="">{t.match_customer}</option>
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}{c.company ? ` · ${c.company}` : ''}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none" size={12} />
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${colors.bg.hover} transition-all btn-active-scale`}
+                    title={t.upload}
+                  >
+                    <Upload size={18} className={colors.text.muted} />
+                  </button>
+                  {mediaRecorderRef.current && (mediaRecorderRef.current.state === 'recording' || mediaRecorderRef.current.state === 'paused') && (
+                    <button type="button" onClick={finishRecording} disabled={isTranscribing} className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${colors.bg.hover} btn-active-scale`} title="完成录音">
+                      <Square size={18} className={colors.text.muted} />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { if (recording) pauseRecording(); else startRecording(); }}
+                    disabled={isTranscribing}
+                    className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center shadow-lg btn-active-scale ml-auto ${recording ? 'bg-red-500 text-white' : isTranscribing ? 'bg-gray-400 text-white' : colors.button.primary}`}
+                  >
+                    {isTranscribing ? <Loader2 className="animate-spin" size={22} /> : recording ? <Pause size={22} /> : mediaRecorderRef.current?.state === 'paused' ? <Play size={22} /> : <Mic size={22} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       <input
         ref={fileInputRef}

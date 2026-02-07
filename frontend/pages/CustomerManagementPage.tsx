@@ -86,6 +86,7 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showSearchDialog, setShowSearchDialog] = useState(false);
   const [isSearchVoiceProcessing, setIsSearchVoiceProcessing] = useState(false);
   const [searchRecording, setSearchRecording] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ name: '', company: '', role: '', industry: '', tagsInput: '' });
@@ -212,59 +213,91 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
       </main>
       </div>
 
-      {/* 蒙板：当添加客户时显示 */}
-      {showAddForm && (
-        <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30"
-          onClick={() => setShowAddForm(false)}
-        />
-      )}
-      {/* 底部固定栏：不放在 page-transition 内，避免 transform 导致首帧错位 */}
-      <div className="fixed left-0 right-0 bottom-14 z-40 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] py-2 px-3">
-        {showAddForm && (
-          <div className={`mb-3 pt-2 border-t ${colors.border.accent} ${colors.badge.primary} rounded-xl px-3 pb-3`}>
-            <div className="flex justify-between items-center mb-2">
-              <span className={`text-[10px] font-bold ${colors.text.accent}`}>{t.manual_title}</span>
-              <button type="button" onClick={() => setShowAddForm(false)} className={`${colors.text.accent} p-1 rounded ${colors.bg.hover}`}><X size={14} /></button>
-            </div>
-            <form onSubmit={(e) => { e.preventDefault(); onAdd({id:'m-'+Date.now(), ...newCustomer, tags:newCustomer.tagsInput.split(/[ ,]/).filter(t=>t), createdAt: new Date().toISOString()}); setShowAddForm(false); setNewCustomer({ name: '', company: '', tagsInput: '' }); }} className="space-y-2.5">
-              <div className="grid grid-cols-2 gap-2">
-                <input placeholder={t.name} required className={`px-3 py-2 ${colors.bg.card} ${colors.border.accent} rounded-lg text-xs outline-none focus:ring-2 ${colors.primary.ring}`} value={newCustomer.name} onChange={e => setNewCustomer({...newCustomer, name: e.target.value})} />
-                <input placeholder={t.company} required className={`px-3 py-2 ${colors.bg.card} ${colors.border.accent} rounded-lg text-xs outline-none focus:ring-2 ${colors.primary.ring}`} value={newCustomer.company} onChange={e => setNewCustomer({...newCustomer, company: e.target.value})} />
-              </div>
-              <input placeholder={t.tags} className={`w-full px-3 py-2 ${colors.bg.card} ${colors.border.accent} rounded-lg text-xs outline-none focus:ring-2 ${colors.primary.ring}`} value={newCustomer.tagsInput} onChange={e => setNewCustomer({...newCustomer, tagsInput: e.target.value})} />
-              <button type="submit" className={`w-full py-2.5 ${colors.button.primary} rounded-xl font-bold text-xs btn-active-scale`}>{t.save}</button>
-            </form>
-          </div>
-        )}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
-            <input
-              type="text"
-              placeholder={t.search}
-              className={`w-full pl-8 pr-2.5 py-2.5 ${colors.bg.input} ${colors.border.light} rounded-xl text-xs font-medium focus:ring-1 ${colors.primary.ring} outline-none`}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+      {/* 底部悬浮图标：搜索、添加 */}
+      <div className="fixed left-0 right-0 bottom-20 z-40 flex justify-end gap-3 px-4 pointer-events-none">
+        <div className="flex items-center gap-3 pointer-events-auto">
           <button
-            onClick={() => setShowAddForm(true)}
-            className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all btn-active-scale"
+            type="button"
+            onClick={() => setShowSearchDialog(true)}
+            className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all btn-active-scale ${colors.button.secondary}`}
+            title={t.search}
+            aria-label={t.search}
           >
-            <Plus size={18} />
+            <Search size={22} className={colors.text.accent} />
           </button>
           <button
+            type="button"
+            onClick={() => setShowAddForm(true)}
+            className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all btn-active-scale ${colors.button.secondary}`}
+            title={t.add}
+            aria-label={t.add}
+          >
+            <Plus size={22} className={colors.text.accent} />
+          </button>
+          <button
+            type="button"
             onClick={startSearchVoiceInput}
             disabled={searchRecording || isSearchVoiceProcessing}
-            className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all btn-active-scale shadow-lg ${
-              searchRecording ? 'bg-red-500 text-white' : isSearchVoiceProcessing ? 'bg-gray-400 text-white' : colors.button.primary
-            }`}
+            className={`shrink-0 w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-all btn-active-scale ring-2 ring-white/50 ${searchRecording ? 'bg-red-500 text-white' : isSearchVoiceProcessing ? 'bg-gray-400 text-white' : colors.button.primary}`}
+            title={lang === 'zh' ? '语音搜索' : lang === 'en' ? 'Voice search' : lang === 'ja' ? '音声検索' : '음성 검색'}
+            aria-label={lang === 'zh' ? '语音搜索' : 'Voice search'}
           >
-            {isSearchVoiceProcessing ? <Loader2 className="animate-spin" size={22} /> : <Mic size={22} />}
+            {isSearchVoiceProcessing ? <Loader2 className="animate-spin text-white" size={24} /> : <Mic size={24} className="text-white" />}
           </button>
         </div>
       </div>
+
+      {/* 搜索对话框 */}
+      {showSearchDialog && (
+        <>
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50" onClick={() => setShowSearchDialog(false)} aria-hidden />
+          <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-24 pointer-events-none">
+            <div className={`w-full max-w-[min(100%,28rem)] rounded-t-3xl shadow-2xl pointer-events-auto animate-in slide-in-from-bottom duration-300 ${colors.bg.card} border ${colors.border.default} p-4`} onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-3">
+                <span className={`text-sm font-bold ${colors.text.primary}`}>{t.search}</span>
+                <button type="button" onClick={() => setShowSearchDialog(false)} className={`p-1.5 rounded-lg ${colors.bg.hover}`} aria-label={t.search}>
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+                <input
+                  type="text"
+                  placeholder={t.search}
+                  className={`w-full pl-10 pr-3 py-2.5 ${colors.bg.input} ${colors.border.light} rounded-xl text-xs font-medium focus:ring-1 ${colors.primary.ring} outline-none`}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <button type="button" onClick={() => setShowSearchDialog(false)} className={`w-full mt-3 py-2.5 ${colors.button.primary} rounded-xl font-bold text-xs btn-active-scale`}>{lang === 'zh' ? '确定' : lang === 'en' ? 'Done' : lang === 'ja' ? '確定' : '확인'}</button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* 添加客户对话框 */}
+      {showAddForm && (
+        <>
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50" onClick={() => { setShowAddForm(false); setNewCustomer({ name: '', company: '', role: '', industry: '', tagsInput: '' }); }} aria-hidden />
+          <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-24 pointer-events-none">
+            <div className={`w-full max-w-[min(100%,28rem)] rounded-t-3xl shadow-2xl pointer-events-auto animate-in slide-in-from-bottom duration-300 ${colors.bg.card} border ${colors.border.default} p-4`} onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-3">
+                <span className={`text-sm font-bold ${colors.text.primary}`}>{t.manual_title}</span>
+                <button type="button" onClick={() => { setShowAddForm(false); setNewCustomer({ name: '', company: '', role: '', industry: '', tagsInput: '' }); }} className={`${colors.text.accent} p-1.5 rounded-lg ${colors.bg.hover}`}><X size={18} /></button>
+              </div>
+              <form onSubmit={(e) => { e.preventDefault(); onAdd({ id: 'm-' + Date.now(), ...newCustomer, tags: newCustomer.tagsInput.split(/[ ,]/).filter(t => t), createdAt: new Date().toISOString() }); setShowAddForm(false); setNewCustomer({ name: '', company: '', role: '', industry: '', tagsInput: '' }); }} className="space-y-2.5">
+                <div className="grid grid-cols-2 gap-2">
+                  <input placeholder={t.name} required className={`px-3 py-2 ${colors.bg.card} ${colors.border.accent} rounded-lg text-xs outline-none focus:ring-2 ${colors.primary.ring}`} value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} />
+                  <input placeholder={t.company} required className={`px-3 py-2 ${colors.bg.card} ${colors.border.accent} rounded-lg text-xs outline-none focus:ring-2 ${colors.primary.ring}`} value={newCustomer.company} onChange={e => setNewCustomer({ ...newCustomer, company: e.target.value })} />
+                </div>
+                <input placeholder={t.tags} className={`w-full px-3 py-2 ${colors.bg.card} ${colors.border.accent} rounded-lg text-xs outline-none focus:ring-2 ${colors.primary.ring}`} value={newCustomer.tagsInput} onChange={e => setNewCustomer({ ...newCustomer, tagsInput: e.target.value })} />
+                <button type="submit" className={`w-full py-2.5 ${colors.button.primary} rounded-xl font-bold text-xs btn-active-scale`}>{t.save}</button>
+              </form>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

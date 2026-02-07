@@ -22,7 +22,9 @@ import {
   Clock,
   Send,
   User as UserIcon,
-  RefreshCw
+  RefreshCw,
+  Copy,
+  Check
 } from 'lucide-react';
 import { Interaction, Schedule } from '../types';
 import { deepDiveIntoInterest, continueDeepDiveIntoInterest, askAboutInteraction } from '../services/aiService';
@@ -111,6 +113,7 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
   const navigate = useNavigate();
   const { colors, theme } = useTheme();
   const t = translations[lang].interaction_detail;
+  const tHistory = (translations[lang] ?? translations.zh).history;
   const item = interactions.find(i => i.id === id);
   
   const [divingInterest, setDivingInterest] = useState<string | null>(null);
@@ -125,6 +128,8 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
   const [assistantInput, setAssistantInput] = useState('');
   const [isAssistantThinking, setIsAssistantThinking] = useState(false);
   const [addingAction, setAddingAction] = useState<string | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportCopied, setReportCopied] = useState(false);
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const assistantChatEndRef = useRef<HTMLDivElement>(null);
@@ -173,6 +178,48 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
       </button>
     </div>
   );
+
+  const buildReportText = (): string => {
+    const d = item.date ? new Date(item.date).toLocaleString(lang === 'zh' ? 'zh-CN' : lang === 'en' ? 'en-US' : lang === 'ja' ? 'ja-JP' : 'ko-KR') : '';
+    const lines: string[] = [
+      `【${tHistory.report}】${item.customerProfile.name} - ${item.customerProfile.company || ''}`,
+      `${tHistory.date}: ${d}`,
+      `${t.stage}: ${item.intelligence?.currentStage ?? ''}`,
+      `${t.confidence}: ${item.metrics?.confidenceScore ?? 0}%`,
+      '',
+      `## ${t.summary}`,
+      item.customerProfile?.summary ?? '',
+      '',
+      `## ${t.pain_points}`,
+      ...(item.intelligence?.painPoints ?? []).map(p => `- ${p}`),
+      '',
+      `## ${t.key_interests}`,
+      ...(item.intelligence?.keyInterests ?? []).map(k => `- ${k}`),
+      '',
+      `## ${t.next_steps}`,
+      ...(item.intelligence?.nextSteps ?? []).map(s => `- ${s.action}${s.dueDate ? ` (${s.dueDate})` : ''}`),
+      '',
+      `## ${t.suggestions}`,
+      ...(item.suggestions ?? []).map(s => `- ${s}`),
+    ];
+    return lines.join('\n');
+  };
+
+  const handleCopyReport = async () => {
+    const text = buildReportText();
+    try {
+      await navigator.clipboard.writeText(text);
+      setReportCopied(true);
+      setTimeout(() => setReportCopied(false), 2000);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); setReportCopied(true); setTimeout(() => setReportCopied(false), 2000); } catch (_) {}
+      document.body.removeChild(ta);
+    }
+  };
 
   const sentimentColor = item.metrics.sentiment === '正面' ? 'text-emerald-600' : 
                          item.metrics.sentiment === '负面' ? 'text-rose-600' : 'text-gray-600';
@@ -257,9 +304,19 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
 
   return (
     <div className="max-w-5xl mx-auto animate-in fade-in duration-500 space-y-4 pb-24">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors text-[10px] font-black uppercase tracking-widest">
-        <ArrowLeft size={14} /> <span>{t.back}</span>
-      </button>
+      <div className="flex items-center justify-between gap-3">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors text-[10px] font-black uppercase tracking-widest shrink-0">
+          <ArrowLeft size={14} /> <span>{t.back}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowReportModal(true)}
+          className={`ml-auto flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold btn-active-scale shrink-0 ${colors.button.primary}`}
+        >
+          <FileText size={14} />
+          {tHistory.report}
+        </button>
+      </div>
 
       <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-6 md:mb-8">
         <div>
@@ -497,6 +554,41 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
           </div>
         </div>
       </div>
+
+      {/* 汇报弹窗：可复制本次复盘内容 */}
+      {showReportModal && (
+        <>
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[90]" onClick={() => setShowReportModal(false)} aria-hidden />
+          <div className="fixed inset-0 z-[91] flex items-center justify-center p-4 pointer-events-none">
+            <div className={`w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl shadow-2xl pointer-events-auto animate-in zoom-in-95 duration-200 ${colors.bg.card} border ${colors.border.default}`} onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between p-4 border-b border-gray-200/50 shrink-0">
+                <h3 className={`text-sm font-bold ${colors.text.primary}`}>{tHistory.report_title}</h3>
+                <button type="button" onClick={() => setShowReportModal(false)} className={`p-1.5 rounded-lg ${colors.bg.hover}`} aria-label="关闭">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                <pre className="whitespace-pre-wrap text-xs font-medium text-gray-700 bg-gray-50 rounded-xl p-4 border border-gray-100 font-sans">
+                  {buildReportText()}
+                </pre>
+              </div>
+              <div className="p-4 border-t border-gray-200/50 shrink-0 flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopyReport}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold btn-active-scale ${colors.button.primary}`}
+                >
+                  {reportCopied ? <Check size={16} /> : <Copy size={16} />}
+                  {reportCopied ? (lang === 'zh' ? '已复制' : lang === 'en' ? 'Copied' : lang === 'ja' ? 'コピー済み' : '복사됨') : tHistory.copy}
+                </button>
+                <button type="button" onClick={() => setShowReportModal(false)} className={`px-4 py-2.5 rounded-xl text-xs font-bold ${colors.button.secondary}`}>
+                  {lang === 'zh' ? '关闭' : lang === 'en' ? 'Close' : lang === 'ja' ? '閉じる' : '닫기'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Interactive Deep Dive Q&A Modal */}
       {divingInterest && (

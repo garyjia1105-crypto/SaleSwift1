@@ -182,16 +182,13 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
 
   return (
     <div className="flex flex-col min-h-full relative">
-      {/* 蒙板：当添加或编辑日程时显示，不覆盖底部操作栏 */}
-      {(showAddForm || editingId) && (
+      {/* 蒙板：当编辑日程时显示 */}
+      {editingId && (
         <div 
-          className="fixed top-0 left-0 right-0 bottom-14 bg-black/30 backdrop-blur-sm z-30"
+          className="fixed top-0 left-0 right-0 bottom-0 bg-black/30 backdrop-blur-sm z-30"
           onClick={() => {
-            if (showAddForm) setShowAddForm(false);
-            if (editingId) {
-              setEditingId(null);
-              setEditingSchedule({ title: '', date: '', time: '', customerId: '' });
-            }
+            setEditingId(null);
+            setEditingSchedule({ title: '', date: '', time: '', customerId: '' });
           }}
         />
       )}
@@ -319,42 +316,55 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
         </div>
       )}
 
-      {/* 底部浮动栏：不放在 page-transition 内，避免 transform 导致首帧错位 */}
-      <div className="fixed left-0 right-0 bottom-14 z-50 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] py-2 px-3">
-        {showAddForm && (
-          <div className="mb-3 pt-2 border-t border-emerald-100 bg-emerald-50/50 rounded-xl px-3 pb-3">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-[10px] font-bold text-emerald-700">{t.manual}</span>
-              <button type="button" onClick={() => setShowAddForm(false)} className="text-emerald-600 p-1 rounded hover:bg-emerald-100"><X size={14} /></button>
-            </div>
-            <form onSubmit={(e)=>{e.preventDefault(); onAddSchedule({id:'s-'+Date.now(), ...newSchedule, status:'pending'}); setShowAddForm(false); setNewSchedule({ title: '', date: '', time: '', customerId: '' });}} className="space-y-2.5">
-              <input required placeholder={t.placeholder_title} className="w-full px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" value={newSchedule.title} onChange={e=>setNewSchedule({...newSchedule, title: e.target.value})} />
-              <div className="grid grid-cols-2 gap-2">
-                <input type="date" required className="px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" value={newSchedule.date} onChange={e=>setNewSchedule({...newSchedule, date: e.target.value})} />
-                <input type="time" className="px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" value={newSchedule.time} onChange={e=>setNewSchedule({...newSchedule, time: e.target.value})} />
-              </div>
-              <button type="submit" className="w-full py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-xs btn-active-scale">{t.confirm}</button>
-            </form>
-          </div>
-        )}
-        <div className="flex items-center justify-end gap-2">
+      {/* 底部悬浮图标：添加、录音 */}
+      <div className="fixed left-0 right-0 bottom-20 z-40 flex justify-end gap-3 px-4 pointer-events-none">
+        <div className="flex items-center gap-3 pointer-events-auto">
           <button
-            onClick={() => setShowAddForm(v => !v)}
-            className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all btn-active-scale"
+            type="button"
+            onClick={() => setShowAddForm(true)}
+            className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all btn-active-scale ${colors.button.secondary}`}
+            title={t.manual}
+            aria-label={t.manual}
           >
-            <Plus size={18} />
+            <Plus size={22} className={colors.text.accent} />
           </button>
           <button
+            type="button"
             onClick={recording ? stopVoiceInput : startVoiceInput}
             disabled={isProcessing}
-            className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all btn-active-scale shadow-lg ${
-              recording ? 'bg-red-500 text-white' : isProcessing ? 'bg-gray-400 text-white' : colors.button.primary
-            }`}
+            className={`shrink-0 w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-all btn-active-scale ring-2 ring-white/50 ${recording ? 'bg-red-500 text-white' : isProcessing ? 'bg-gray-400 text-white' : colors.button.primary}`}
+            title={t.recording}
+            aria-label={t.recording}
           >
-            {isProcessing ? <Loader2 className="animate-spin" size={22} /> : recording ? <X size={22} /> : <Mic size={22} />}
+            {isProcessing ? <Loader2 className="animate-spin text-white" size={24} /> : recording ? <X size={24} className="text-white" /> : <Mic size={24} className="text-white" />}
           </button>
         </div>
       </div>
+
+      {/* 添加日程对话框 */}
+      {showAddForm && (
+        <>
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50" onClick={() => { setShowAddForm(false); setNewSchedule({ title: '', date: '', time: '', customerId: '' }); }} aria-hidden />
+          <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-24 pointer-events-none">
+            <div className={`w-full max-w-[min(100%,28rem)] rounded-t-3xl shadow-2xl pointer-events-auto animate-in slide-in-from-bottom duration-300 ${colors.bg.card} border ${colors.border.default} p-4`} onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-3">
+                <span className={`text-sm font-bold ${colors.text.primary}`}>{t.manual}</span>
+                <button type="button" onClick={() => { setShowAddForm(false); setNewSchedule({ title: '', date: '', time: '', customerId: '' }); }} className={`p-1.5 rounded-lg ${colors.bg.hover}`} aria-label={t.confirm}>
+                  <X size={18} />
+                </button>
+              </div>
+              <form onSubmit={(e) => { e.preventDefault(); onAddSchedule({ id: 's-' + Date.now(), ...newSchedule, status: 'pending' }); setShowAddForm(false); setNewSchedule({ title: '', date: '', time: '', customerId: '' }); }} className="space-y-2.5">
+                <input required placeholder={t.placeholder_title} className={`w-full px-3 py-2 ${colors.bg.input} ${colors.border.accent} rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400`} value={newSchedule.title} onChange={e => setNewSchedule({ ...newSchedule, title: e.target.value })} />
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="date" required className={`px-3 py-2 ${colors.bg.input} ${colors.border.accent} rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400`} value={newSchedule.date} onChange={e => setNewSchedule({ ...newSchedule, date: e.target.value })} />
+                  <input type="time" className={`px-3 py-2 ${colors.bg.input} ${colors.border.accent} rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400`} value={newSchedule.time} onChange={e => setNewSchedule({ ...newSchedule, time: e.target.value })} />
+                </div>
+                <button type="submit" className={`w-full py-2.5 ${colors.button.primary} rounded-xl font-bold text-xs btn-active-scale`}>{t.confirm}</button>
+              </form>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
