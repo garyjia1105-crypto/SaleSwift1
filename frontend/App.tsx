@@ -323,7 +323,7 @@ const App: React.FC = () => {
 
   const updateInteraction = async (id: string, updates: {
     customerId?: string | null;
-    intelligence?: { nextSteps?: Array<{ action: string; priority?: '高' | '中' | '低'; dueDate?: string }> };
+    intelligence?: { nextSteps?: Array<{ id?: string; action: string; priority?: '高' | '中' | '低'; dueDate?: string }> };
   }) => {
     try {
       const updated = await api.interactions.update(id, updates);
