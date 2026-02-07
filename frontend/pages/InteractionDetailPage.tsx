@@ -31,6 +31,7 @@ import { Interaction, Schedule } from '../types';
 import { deepDiveIntoInterest, continueDeepDiveIntoInterest, askAboutInteraction } from '../services/aiService';
 import { translations, Language } from '../translations';
 import { useTheme } from '../contexts/ThemeContext';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const DetailSection: React.FC<{ title: string, icon: React.ReactNode, children: React.ReactNode, variant?: 'primary' | 'secondary' | 'default' }> = ({ title, icon, children, variant = 'default' }) => {
   const headerClass = variant === 'primary' 
@@ -132,6 +133,7 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
   const [addingAction, setAddingAction] = useState<string | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportCopied, setReportCopied] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ title: string; message: string; confirmLabel: string; cancelLabel: string; onConfirm: () => void } | null>(null);
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const assistantChatEndRef = useRef<HTMLDivElement>(null);
@@ -314,13 +316,15 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
           {onDeleteInteraction && item && (
             <button
               type="button"
-              onClick={() => {
-                const msg = lang === 'zh' ? '确定删除本条复盘？' : lang === 'en' ? 'Delete this review?' : lang === 'ja' ? 'この復盤を削除しますか？' : '이 리뷰를 삭제할까요?';
-                if (window.confirm(msg)) {
-                  onDeleteInteraction(item.id);
-                  navigate('/history');
-                }
-              }}
+              onClick={() =>
+                setDeleteConfirm({
+                  title: lang === 'zh' ? '删除复盘' : lang === 'en' ? 'Delete review' : lang === 'ja' ? '復盤を削除' : '리뷰 삭제',
+                  message: lang === 'zh' ? '确定删除本条复盘？删除后无法恢复。' : lang === 'en' ? 'Delete this review? This cannot be undone.' : lang === 'ja' ? 'この復盤を削除しますか？元に戻せません。' : '이 리뷰를 삭제할까요? 되돌릴 수 없습니다.',
+                  confirmLabel: lang === 'zh' ? '删除' : lang === 'en' ? 'Delete' : lang === 'ja' ? '削除' : '삭제',
+                  cancelLabel: lang === 'zh' ? '取消' : lang === 'en' ? 'Cancel' : lang === 'ja' ? 'キャンセル' : '취소',
+                  onConfirm: () => { onDeleteInteraction(item.id); navigate('/history'); },
+                })
+              }
               className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-bold btn-active-scale shrink-0 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200`}
               title={lang === 'zh' ? '删除复盘' : lang === 'en' ? 'Delete' : lang === 'ja' ? '削除' : '삭제'}
             >
@@ -609,6 +613,19 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
             </div>
           </div>
         </>
+      )}
+
+      {deleteConfirm && (
+        <ConfirmDialog
+          open={!!deleteConfirm}
+          onClose={() => setDeleteConfirm(null)}
+          onConfirm={deleteConfirm.onConfirm}
+          title={deleteConfirm.title}
+          message={deleteConfirm.message}
+          confirmLabel={deleteConfirm.confirmLabel}
+          cancelLabel={deleteConfirm.cancelLabel}
+          variant="danger"
+        />
       )}
 
       {/* Interactive Deep Dive Q&A Modal */}

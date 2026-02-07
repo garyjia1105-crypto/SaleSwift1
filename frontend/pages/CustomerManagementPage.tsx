@@ -21,6 +21,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { extractSearchKeywords } from '../services/aiService';
 import { translations, Language } from '../translations';
 import { useTheme } from '../contexts/ThemeContext';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 /** 将复盘返回的阶段文案归一化为 SalesStage 枚举 */
 function normalizeStage(stage: string | undefined): SalesStage {
@@ -89,6 +90,7 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
   const [isSyncing, setIsSyncing] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showSearchDialog, setShowSearchDialog] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ title: string; message: string; confirmLabel: string; cancelLabel: string; onConfirm: () => void } | null>(null);
   const [isSearchVoiceProcessing, setIsSearchVoiceProcessing] = useState(false);
   const [searchRecording, setSearchRecording] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ name: '', company: '', role: '', industry: '', tagsInput: '' });
@@ -211,8 +213,13 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
                   type="button"
                   onClick={(e) => {
                     e.preventDefault();
-                    const msg = lang === 'zh' ? `确定删除客户「${customer.name}」？其复盘与日程将一并移除。` : lang === 'en' ? `Delete "${customer.name}"? Their reviews and schedules will be removed.` : lang === 'ja' ? `「${customer.name}」を削除しますか？復盤・予定も削除されます。` : `"${customer.name}" 삭제할까요? 리뷰와 일정도 삭제됩니다.`;
-                    if (window.confirm(msg)) onDeleteCustomer(customer.id);
+                    setDeleteConfirm({
+                      title: lang === 'zh' ? '删除客户' : lang === 'en' ? 'Delete client' : lang === 'ja' ? '顧客を削除' : '고객 삭제',
+                      message: lang === 'zh' ? `确定删除客户「${customer.name}」？其复盘与日程将一并移除，且无法恢复。` : lang === 'en' ? `Delete "${customer.name}"? Their reviews and schedules will be removed. This cannot be undone.` : lang === 'ja' ? `「${customer.name}」を削除しますか？復盤・予定も削除され、元に戻せません。` : `"${customer.name}" 삭제할까요? 리뷰와 일정도 삭제되며 되돌릴 수 없습니다.`,
+                      confirmLabel: lang === 'zh' ? '删除' : lang === 'en' ? 'Delete' : lang === 'ja' ? '削除' : '삭제',
+                      cancelLabel: lang === 'zh' ? '取消' : lang === 'en' ? 'Cancel' : lang === 'ja' ? 'キャンセル' : '취소',
+                      onConfirm: () => onDeleteCustomer(customer.id),
+                    });
                   }}
                   className="shrink-0 p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
                   title={lang === 'zh' ? '删除客户' : lang === 'en' ? 'Delete' : lang === 'ja' ? '削除' : '삭제'}
@@ -226,6 +233,19 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
       </div>
       </main>
       </div>
+
+      {deleteConfirm && (
+        <ConfirmDialog
+          open={!!deleteConfirm}
+          onClose={() => setDeleteConfirm(null)}
+          onConfirm={deleteConfirm.onConfirm}
+          title={deleteConfirm.title}
+          message={deleteConfirm.message}
+          confirmLabel={deleteConfirm.confirmLabel}
+          cancelLabel={deleteConfirm.cancelLabel}
+          variant="danger"
+        />
+      )}
 
       {/* 底部悬浮图标：搜索、添加 */}
       <div className="fixed left-0 right-0 bottom-20 z-40 flex justify-end gap-3 px-4 pointer-events-none">

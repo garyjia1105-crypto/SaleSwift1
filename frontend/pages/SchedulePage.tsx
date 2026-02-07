@@ -22,6 +22,7 @@ import {
 import { parseScheduleVoice, transcribeAudio } from '../services/aiService';
 import { translations, Language } from '../translations';
 import { useTheme } from '../contexts/ThemeContext';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 interface Props {
   schedules: Schedule[];
@@ -42,6 +43,7 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
   const [newSchedule, setNewSchedule] = useState({ title: '', date: '', time: '', customerId: '' });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingSchedule, setEditingSchedule] = useState({ title: '', date: '', time: '', customerId: '' });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ title: string; message: string; confirmLabel: string; cancelLabel: string; onConfirm: () => void } | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
@@ -330,10 +332,15 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
                   {onDeleteSchedule && (
                     <button
                       type="button"
-                      onClick={() => {
-                        const msg = lang === 'zh' ? '确定删除该日程？' : lang === 'en' ? 'Delete this schedule?' : lang === 'ja' ? 'この予定を削除しますか？' : '이 일정을 삭제할까요?';
-                        if (window.confirm(msg)) onDeleteSchedule(item.id);
-                      }}
+                      onClick={() =>
+                        setDeleteConfirm({
+                          title: lang === 'zh' ? '删除日程' : lang === 'en' ? 'Delete schedule' : lang === 'ja' ? '予定を削除' : '일정 삭제',
+                          message: lang === 'zh' ? `确定删除「${item.title}」？删除后无法恢复。` : lang === 'en' ? `Delete "${item.title}"? This cannot be undone.` : lang === 'ja' ? `「${item.title}」を削除しますか？元に戻せません。` : `"${item.title}" 삭제할까요? 되돌릴 수 없습니다.`,
+                          confirmLabel: lang === 'zh' ? '删除' : lang === 'en' ? 'Delete' : lang === 'ja' ? '削除' : '삭제',
+                          cancelLabel: lang === 'zh' ? '取消' : lang === 'en' ? 'Cancel' : lang === 'ja' ? 'キャンセル' : '취소',
+                          onConfirm: () => onDeleteSchedule(item.id),
+                        })
+                      }
                       className="shrink-0 p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                       title={lang === 'zh' ? '删除' : lang === 'en' ? 'Delete' : lang === 'ja' ? '削除' : '삭제'}
                     >
@@ -407,6 +414,19 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
             </form>
           </div>
         </div>
+      )}
+
+      {deleteConfirm && (
+        <ConfirmDialog
+          open={!!deleteConfirm}
+          onClose={() => setDeleteConfirm(null)}
+          onConfirm={deleteConfirm.onConfirm}
+          title={deleteConfirm.title}
+          message={deleteConfirm.message}
+          confirmLabel={deleteConfirm.confirmLabel}
+          cancelLabel={deleteConfirm.cancelLabel}
+          variant="danger"
+        />
       )}
 
       {/* 底部悬浮图标：添加、录音 */}

@@ -26,6 +26,7 @@ import {
 import { translations, Language } from '../translations';
 import { generateCoursePlan } from '../services/aiService';
 import { useTheme } from '../contexts/ThemeContext';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 interface Props {
   customers: Customer[];
@@ -54,6 +55,7 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [editingSchedule, setEditingSchedule] = useState({ title: '', date: '', time: '' });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ title: string; message: string; confirmLabel: string; cancelLabel: string; onConfirm: () => void } | null>(null);
   
   const [isEditingContact, setIsEditingContact] = useState(false);
   const customer = customers.find(c => c.id === id);
@@ -148,13 +150,15 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
           {onDeleteCustomer && (
             <button
               type="button"
-              onClick={() => {
-                const msg = lang === 'zh' ? `确定删除客户「${customer.name}」？其复盘与日程将一并移除。` : lang === 'en' ? `Delete "${customer.name}"? Their reviews and schedules will be removed.` : lang === 'ja' ? `「${customer.name}」を削除しますか？復盤・予定も削除されます。` : `"${customer.name}" 삭제할까요? 리뷰와 일정도 삭제됩니다.`;
-                if (window.confirm(msg)) {
-                  onDeleteCustomer(customer.id);
-                  navigate('/customers');
-                }
-              }}
+              onClick={() =>
+                setDeleteConfirm({
+                  title: lang === 'zh' ? '删除客户' : lang === 'en' ? 'Delete client' : lang === 'ja' ? '顧客を削除' : '고객 삭제',
+                  message: lang === 'zh' ? `确定删除客户「${customer.name}」？其复盘与日程将一并移除，且无法恢复。` : lang === 'en' ? `Delete "${customer.name}"? Their reviews and schedules will be removed. This cannot be undone.` : lang === 'ja' ? `「${customer.name}」を削除しますか？復盤・予定も削除され、元に戻せません。` : `"${customer.name}" 삭제할까요? 리뷰와 일정도 삭제되며 되돌릴 수 없습니다.`,
+                  confirmLabel: lang === 'zh' ? '删除' : lang === 'en' ? 'Delete' : lang === 'ja' ? '削除' : '삭제',
+                  cancelLabel: lang === 'zh' ? '取消' : lang === 'en' ? 'Cancel' : lang === 'ja' ? 'キャンセル' : '취소',
+                  onConfirm: () => { onDeleteCustomer(customer.id); navigate('/customers'); },
+                })
+              }
               className="flex items-center gap-1 px-2.5 py-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg text-[10px] font-bold btn-active-scale border border-rose-200"
               title={lang === 'zh' ? '删除客户' : lang === 'en' ? 'Delete' : lang === 'ja' ? '削除' : '삭제'}
             >
@@ -399,6 +403,19 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
           )}
         </div>
       </div>
+
+      {deleteConfirm && (
+        <ConfirmDialog
+          open={!!deleteConfirm}
+          onClose={() => setDeleteConfirm(null)}
+          onConfirm={deleteConfirm.onConfirm}
+          title={deleteConfirm.title}
+          message={deleteConfirm.message}
+          confirmLabel={deleteConfirm.confirmLabel}
+          cancelLabel={deleteConfirm.cancelLabel}
+          variant="danger"
+        />
+      )}
 
       {/* 蒙板：当添加或编辑日程时显示 */}
       {(showAddSchedule || editingScheduleId) && (
