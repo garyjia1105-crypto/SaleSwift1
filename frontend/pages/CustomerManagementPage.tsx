@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Customer, Interaction, SalesStage } from '../types';
 import { 
   Search, 
@@ -14,7 +14,8 @@ import {
   User,
   Tags,
   Filter,
-  Trash2
+  Trash2,
+  RotateCcw
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -22,6 +23,7 @@ import { extractSearchKeywords } from '../services/aiService';
 import { translations, Language } from '../translations';
 import { useTheme } from '../contexts/ThemeContext';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { api } from '../services/api';
 
 /** 将复盘返回的阶段文案归一化为 SalesStage 枚举 */
 function normalizeStage(stage: string | undefined): SalesStage {
@@ -44,10 +46,11 @@ interface Props {
   onSync: (customers: Customer[]) => void;
   onAdd: (customer: Customer) => void;
   onDeleteCustomer: (id: string) => void;
+  onRestoreCustomer?: (id: string) => void;
   lang: Language;
 }
 
-const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSync, onAdd, onDeleteCustomer, lang }) => {
+const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSync, onAdd, onDeleteCustomer, onRestoreCustomer, lang }) => {
   const t = translations[lang].customers;
   const { colors } = useTheme();
 
@@ -98,6 +101,18 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
   const [isSearchVoiceProcessing, setIsSearchVoiceProcessing] = useState(false);
   const [searchRecording, setSearchRecording] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ name: '', company: '', role: '', industry: '', tagsInput: '' });
+  const [showTrash, setShowTrash] = useState(false);
+  const [deletedCustomers, setDeletedCustomers] = useState<Customer[]>([]);
+  const [loadingTrash, setLoadingTrash] = useState(false);
+
+  useEffect(() => {
+    if (!showTrash) return;
+    setLoadingTrash(true);
+    api.customers.list({ deleted: true })
+      .then((list) => setDeletedCustomers(list as Customer[]))
+      .catch(() => setDeletedCustomers([]))
+      .finally(() => setLoadingTrash(false));
+  }, [showTrash]);
 
   const allTags = useMemo(() => {
     const tags = new Set<string>();
@@ -138,7 +153,72 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
           <p className="text-[10px] text-gray-500 font-medium mt-1">{t.subtitle}</p>
         </header>
 
-        <main className="flex-1 overflow-auto pb-0 space-y-4">
+        {/* 客户 / 回收站 切换 */}
+        <div className="flex gap-2 mt-3 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowTrash(false)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+              !showTrash ? `${colors.button.primary} ${colors.primary.border}` : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200'
+            }`}
+          >
+            {lang === 'zh' ? '客户' : lang === 'en' ? 'Clients' : lang === 'ja' ? '顧客' : '고객'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowTrash(true)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
+              showTrash ? `${colors.button.primary} ${colors.primary.border}` : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200'
+            }`}
+          >
+            <Trash2 size={14} />{(t as Record<string, string>).trash_tab ?? '回收站'}
+          </button>
+        </div>
+
+        <main className="flex-1 overflow-auto pb-0 space-y-4 mt-3">
+      {showTrash ? (
+        <>
+          {loadingTrash ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="animate-spin text-gray-400" size={28} />
+            </div>
+          ) : deletedCustomers.length === 0 ? (
+            <div className="py-16 text-center flex flex-col items-center text-gray-300">
+              <Trash2 size={32} className="mb-2 opacity-50" />
+              <p className="text-[10px] font-bold uppercase tracking-widest">{(t as Record<string, string>).empty_trash ?? '暂无已删除客户'}</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {deletedCustomers.map((customer) => (
+                <div key={customer.id} className="group bg-white p-4 rounded-2xl border border-gray-100 soft-shadow hover:border-gray-200 transition-all flex items-center gap-4">
+                  <div className={`w-10 h-10 rounded-xl ${colors.badge.primary} flex items-center justify-center font-bold text-sm shrink-0`}>
+                    <User size={18} />
+                  </div>
+                  <div className="flex-1 overflow-hidden min-w-0">
+                    <h4 className="text-sm font-bold text-gray-900 truncate">{customer.name}</h4>
+                    <p className="text-[10px] text-gray-500 flex items-center gap-1 truncate">
+                      <Building2 size={10} /> {customer.company}
+                    </p>
+                  </div>
+                  {onRestoreCustomer && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onRestoreCustomer(customer.id);
+                        setDeletedCustomers((prev) => prev.filter((c) => c.id !== customer.id));
+                      }}
+                      className={`shrink-0 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 ${colors.button.primary} border ${colors.primary.border} btn-active-scale`}
+                    >
+                      <RotateCcw size={14} />{(t as Record<string, string>).restore ?? '恢复'}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
       <div className="p-4 rounded-2xl border border-gray-100 soft-shadow bg-white">
         <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-4">{t.funnel}</h3>
         <div className="h-[140px] w-full min-w-0">
@@ -256,9 +336,9 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
                   onClick={(e) => {
                     e.preventDefault();
                     setDeleteConfirm({
-                      title: lang === 'zh' ? '删除客户' : lang === 'en' ? 'Delete client' : lang === 'ja' ? '顧客を削除' : '고객 삭제',
-                      message: lang === 'zh' ? `确定删除客户「${customer.name}」？其复盘与日程将一并移除，且无法恢复。` : lang === 'en' ? `Delete "${customer.name}"? Their reviews and schedules will be removed. This cannot be undone.` : lang === 'ja' ? `「${customer.name}」を削除しますか？復盤・予定も削除され、元に戻せません。` : `"${customer.name}" 삭제할까요? 리뷰와 일정도 삭제되며 되돌릴 수 없습니다.`,
-                      confirmLabel: lang === 'zh' ? '删除' : lang === 'en' ? 'Delete' : lang === 'ja' ? '削除' : '삭제',
+                      title: lang === 'zh' ? '移入回收站' : lang === 'en' ? 'Move to recycle bin' : lang === 'ja' ? 'ごみ箱に移動' : '휴지통으로 이동',
+                      message: ((t as Record<string, string>).delete_confirm_soft ?? '确定将「{name}」移入回收站？可在回收站中恢复。').replace('{name}', customer.name),
+                      confirmLabel: lang === 'zh' ? '移入回收站' : lang === 'en' ? 'Move' : lang === 'ja' ? '移動' : '이동',
                       cancelLabel: lang === 'zh' ? '取消' : lang === 'en' ? 'Cancel' : lang === 'ja' ? 'キャンセル' : '취소',
                       onConfirm: () => onDeleteCustomer(customer.id),
                     });
@@ -273,6 +353,8 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
           ))
         )}
       </div>
+        </>
+      )}
       </main>
       </div>
 

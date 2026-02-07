@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import mongoose from 'mongoose';
 import { authMiddleware } from '../middleware/auth.js';
-import { Customer } from '../lib/mongodb.js';
+import { Customer, Schedule } from '../lib/mongodb.js';
 
 export const customersRouter = Router();
 customersRouter.use(authMiddleware);
@@ -17,13 +17,23 @@ function toCustomer(doc: { _id: mongoose.Types.ObjectId; [key: string]: any }) {
     phone: doc.phone ?? undefined,
     tags: Array.isArray(doc.tags) ? doc.tags : [],
     createdAt: doc.createdAt?.toISOString?.() ?? new Date().toISOString(),
+    deletedAt: doc.deletedAt ? new Date(doc.deletedAt).toISOString() : undefined,
   };
 }
+
+const notDeleted = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
 
 customersRouter.get('/', async (req: any, res) => {
   try {
     const search = (req.query.search as string)?.trim() || '';
-    let list = await Customer.find({ userId: req.user.id })
+    const listDeleted = req.query.deleted === 'true';
+    const filter: any = { userId: req.user.id };
+    if (listDeleted) {
+      filter.deletedAt = { $ne: null, $exists: true };
+    } else {
+      Object.assign(filter, notDeleted);
+    }
+    let list = await Customer.find(filter)
       .sort({ createdAt: -1 })
       .lean();
     if (search) {
@@ -73,6 +83,7 @@ customersRouter.get('/:id', async (req: any, res) => {
     const doc = await Customer.findOne({
       _id: req.params.id,
       userId: req.user.id,
+      ...notDeleted,
     });
     if (!doc) return res.status(404).json({ error: 'Customer not found' });
     return res.json(toCustomer(doc.toObject()));
@@ -87,12 +98,20 @@ customersRouter.patch('/:id', async (req: any, res) => {
     if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ error: 'Invalid id' });
     }
+    const { name, company, role, industry, email, phone, tags, restore } = req.body;
+    if (restore === true) {
+      const doc = await Customer.findOne({ _id: req.params.id, userId: req.user.id });
+      if (!doc) return res.status(404).json({ error: 'Customer not found' });
+      doc.deletedAt = undefined;
+      await doc.save();
+      return res.json(toCustomer(doc.toObject()));
+    }
     const doc = await Customer.findOne({
       _id: req.params.id,
       userId: req.user.id,
+      ...notDeleted,
     });
     if (!doc) return res.status(404).json({ error: 'Customer not found' });
-    const { name, company, role, industry, email, phone, tags } = req.body;
     if (name !== undefined) doc.name = name;
     if (company !== undefined) doc.company = company;
     if (role !== undefined) doc.role = role;
@@ -113,11 +132,14 @@ customersRouter.delete('/:id', async (req: any, res) => {
     if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ error: 'Invalid id' });
     }
-    const doc = await Customer.findOneAndDelete({
-      _id: req.params.id,
-      userId: req.user.id,
-    });
+    const doc = await Customer.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user.id, ...notDeleted },
+      { $set: { deletedAt: new Date() } },
+      { new: true }
+    );
     if (!doc) return res.status(404).json({ error: 'Customer not found' });
+    // 软删除客户时级联删除该客户的所有日程
+    await Schedule.deleteMany({ customerId: req.params.id, userId: req.user.id });
     return res.status(204).send();
   } catch (e) {
     console.error(e);

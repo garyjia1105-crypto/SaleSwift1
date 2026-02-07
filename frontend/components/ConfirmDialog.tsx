@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, X } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -24,6 +25,8 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   variant = 'danger',
 }) => {
   const { colors } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   if (!open) return null;
 
@@ -32,14 +35,14 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     onClose();
   };
 
-  return (
+  const dialog = (
     <>
       <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[80] animate-in fade-in duration-200"
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] animate-in fade-in duration-200"
         onClick={onClose}
         aria-hidden
       />
-      <div className="fixed inset-0 z-[81] flex items-center justify-center p-4 pointer-events-none">
+      <div className="fixed inset-0 z-[201] flex items-center justify-center p-4 pointer-events-none">
         <div
           className={`w-full max-w-sm rounded-2xl shadow-2xl pointer-events-auto animate-in zoom-in-95 duration-200 ${colors.bg.card} border ${colors.border.default} overflow-hidden`}
           onClick={(e) => e.stopPropagation()}
@@ -89,6 +92,11 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       </div>
     </>
   );
+
+  if (mounted && typeof document !== 'undefined') {
+    return createPortal(dialog, document.body);
+  }
+  return dialog;
 };
 
 export default ConfirmDialog;

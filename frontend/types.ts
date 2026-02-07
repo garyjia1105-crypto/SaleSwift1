@@ -37,6 +37,7 @@ export interface CoursePlan {
 export interface Schedule {
   id: string;
   customerId?: string;
+  planId?: string; // 关联复盘「下一步计划」条目的 id，取消关联客户时只清 customerId，保留 planId
   title: string;
   date: string; // YYYY-MM-DD
   time?: string; // HH:mm
@@ -59,6 +60,7 @@ export interface SalesIntelligence {
   currentStage: SalesStage;
   probability: number;
   nextSteps: {
+    id?: string; // 稳定 id，用于日程 planId 关联；后端会补全
     action: string;
     priority: '高' | '中' | '低';
     dueDate?: string;

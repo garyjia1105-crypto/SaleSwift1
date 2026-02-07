@@ -36,12 +36,13 @@ interface Props {
   onAddSchedule: (s: Schedule) => void;
   onToggleScheduleStatus: (id: string) => void;
   onUpdateSchedule: (id: string, updates: Partial<Schedule>) => void;
+  onDeleteSchedule?: (id: string) => void;
   onUpdateCustomer: (c: Customer) => void;
   onDeleteCustomer?: (id: string) => void;
   lang: Language;
 }
 
-const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedules, coursePlans, onSaveCoursePlan, onAddSchedule, onToggleScheduleStatus, onUpdateSchedule, onUpdateCustomer, onDeleteCustomer, lang }) => {
+const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedules, coursePlans, onSaveCoursePlan, onAddSchedule, onToggleScheduleStatus, onUpdateSchedule, onDeleteSchedule, onUpdateCustomer, onDeleteCustomer, lang }) => {
   const t = translations[lang].customer_detail;
   const { colors, theme } = useTheme();
   const { id } = useParams<{ id: string }>();
@@ -55,6 +56,7 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [editingSchedule, setEditingSchedule] = useState({ title: '', date: '', time: '' });
   const [deleteConfirm, setDeleteConfirm] = useState<{ title: string; message: string; confirmLabel: string; cancelLabel: string; onConfirm: () => void } | null>(null);
+  const [scheduleDeleteConfirm, setScheduleDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
   
   const [isEditingContact, setIsEditingContact] = useState(false);
   const customer = customers.find(c => c.id === id);
@@ -389,10 +391,20 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
                         });
                       }}
                       className="shrink-0 p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                      title="编辑"
+                      title={lang === 'zh' ? '编辑' : lang === 'en' ? 'Edit' : lang === 'ja' ? '編集' : '편집'}
                     >
                       <Edit2 size={14} />
                     </button>
+                    {onDeleteSchedule && (
+                      <button
+                        type="button"
+                        onClick={() => setScheduleDeleteConfirm({ id: sched.id, title: sched.title })}
+                        className="shrink-0 p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                        title={lang === 'zh' ? '删除' : lang === 'en' ? 'Delete' : lang === 'ja' ? '削除' : '삭제'}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -400,6 +412,22 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
           )}
         </div>
       </div>
+
+      {scheduleDeleteConfirm && (
+        <ConfirmDialog
+          open={!!scheduleDeleteConfirm}
+          onClose={() => setScheduleDeleteConfirm(null)}
+          onConfirm={() => {
+            if (scheduleDeleteConfirm) onDeleteSchedule?.(scheduleDeleteConfirm.id);
+            setScheduleDeleteConfirm(null);
+          }}
+          title={lang === 'zh' ? '删除日程' : lang === 'en' ? 'Delete schedule' : lang === 'ja' ? '予定を削除' : '일정 삭제'}
+          message={lang === 'zh' ? `确定删除「${scheduleDeleteConfirm?.title}」？删除后无法恢复。` : lang === 'en' ? `Delete "${scheduleDeleteConfirm?.title}"? This cannot be undone.` : lang === 'ja' ? `「${scheduleDeleteConfirm?.title}」を削除しますか？元に戻せません。` : `"${scheduleDeleteConfirm?.title}" 삭제할까요? 되돌릴 수 없습니다.`}
+          confirmLabel={lang === 'zh' ? '删除' : lang === 'en' ? 'Delete' : lang === 'ja' ? '削除' : '삭제'}
+          cancelLabel={lang === 'zh' ? '取消' : lang === 'en' ? 'Cancel' : lang === 'ja' ? 'キャンセル' : '취소'}
+          variant="danger"
+        />
+      )}
 
       {deleteConfirm && (
         <ConfirmDialog

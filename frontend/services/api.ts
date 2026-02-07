@@ -100,8 +100,11 @@ export const api = {
       }),
   },
   customers: {
-    list: (search?: string) =>
-      request<Array<{
+    list: (params?: { search?: string; deleted?: boolean }) => {
+      const query: Record<string, string> = {};
+      if (params?.search) query.search = params.search;
+      if (params?.deleted === true) query.deleted = 'true';
+      return request<Array<{
         id: string;
         name: string;
         company: string;
@@ -111,7 +114,9 @@ export const api = {
         phone?: string;
         tags: string[];
         createdAt: string;
-      }>>('/api/customers', { params: search ? { search } : {} }),
+        deletedAt?: string;
+      }>>('/api/customers', { params: Object.keys(query).length ? query : undefined });
+    },
     create: (body: {
       name: string;
       company: string;
@@ -144,7 +149,7 @@ export const api = {
         tags: string[];
         createdAt: string;
       }>(`/api/customers/${id}`),
-    update: (id: string, body: Partial<{ name: string; company: string; role: string; industry: string; email: string; phone: string; tags: string[] }>) =>
+    update: (id: string, body: Partial<{ name: string; company: string; role: string; industry: string; email: string; phone: string; tags: string[]; restore?: boolean }>) =>
       request<{
         id: string;
         name: string;
@@ -155,7 +160,21 @@ export const api = {
         phone?: string;
         tags: string[];
         createdAt: string;
+        deletedAt?: string;
       }>(`/api/customers/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    restore: (id: string) =>
+      request<{
+        id: string;
+        name: string;
+        company: string;
+        role: string;
+        industry: string;
+        email?: string;
+        phone?: string;
+        tags: string[];
+        createdAt: string;
+        deletedAt?: string;
+      }>(`/api/customers/${id}`, { method: 'PATCH', body: JSON.stringify({ restore: true }) }),
     delete: (id: string) => request<void>(`/api/customers/${id}`, { method: 'DELETE' }),
   },
   interactions: {
@@ -200,6 +219,20 @@ export const api = {
         metrics: unknown;
         suggestions: string[];
       }>(`/api/interactions/${id}`),
+    update: (id: string, body: {
+      customerId?: string | null;
+      intelligence?: { nextSteps?: Array<{ id?: string; action: string; priority?: '高' | '中' | '低'; dueDate?: string }> };
+    }) =>
+      request<{
+        id: string;
+        customerId?: string | null;
+        date: string;
+        rawInput: string;
+        customerProfile: unknown;
+        intelligence: unknown;
+        metrics: unknown;
+        suggestions: string[];
+      }>(`/api/interactions/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
     delete: (id: string) => request<void>(`/api/interactions/${id}`, { method: 'DELETE' }),
   },
   schedules: {
@@ -207,6 +240,7 @@ export const api = {
       request<Array<{
         id: string;
         customerId?: string;
+        planId?: string;
         title: string;
         date: string;
         time?: string;
@@ -215,6 +249,7 @@ export const api = {
       }>>('/api/schedules', { params: customerId ? { customerId } : {} }),
     create: (body: {
       customerId?: string;
+      planId?: string;
       title: string;
       date: string;
       time?: string;
@@ -224,16 +259,18 @@ export const api = {
       request<{
         id: string;
         customerId?: string;
+        planId?: string;
         title: string;
         date: string;
         time?: string;
         description?: string;
         status: 'pending' | 'completed';
       }>('/api/schedules', { method: 'POST', body: JSON.stringify(body) }),
-    update: (id: string, body: Partial<{ customerId: string; title: string; date: string; time: string; description: string; status: 'pending' | 'completed' }>) =>
+    update: (id: string, body: Partial<{ customerId: string | null; planId: string | null; title: string; date: string; time: string; description: string; status: 'pending' | 'completed' }>) =>
       request<{
         id: string;
         customerId?: string;
+        planId?: string;
         title: string;
         date: string;
         time?: string;

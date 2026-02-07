@@ -10,6 +10,7 @@ function toSchedule(doc: { _id: mongoose.Types.ObjectId; [key: string]: any }) {
   return {
     id: doc._id.toString(),
     customerId: doc.customerId?.toString?.() ?? undefined,
+    planId: doc.planId ?? undefined,
     title: doc.title ?? '',
     date: doc.date ?? '',
     time: doc.time ?? undefined,
@@ -39,7 +40,7 @@ schedulesRouter.get('/', async (req: any, res) => {
 
 schedulesRouter.post('/', async (req: any, res) => {
   try {
-    const { customerId, title, date, time, description, status } = req.body;
+    const { customerId, planId, title, date, time, description, status } = req.body;
     if (!title || !date) {
       return res.status(400).json({ error: 'Title and date required' });
     }
@@ -47,6 +48,7 @@ schedulesRouter.post('/', async (req: any, res) => {
     const schedule = await Schedule.create({
       userId: req.user.id,
       customerId: validCustomerId,
+      planId: typeof planId === 'string' && planId.trim() ? planId.trim() : null,
       title,
       date,
       time: time ?? null,
@@ -70,8 +72,9 @@ schedulesRouter.patch('/:id', async (req: any, res) => {
       userId: req.user.id,
     });
     if (!doc) return res.status(404).json({ error: 'Schedule not found' });
-    const { customerId, title, date, time, description, status } = req.body;
+    const { customerId, planId, title, date, time, description, status } = req.body;
     if (customerId !== undefined) doc.customerId = customerId && mongoose.Types.ObjectId.isValid(customerId) ? customerId : null;
+    if (planId !== undefined) doc.planId = typeof planId === 'string' && planId.trim() ? planId.trim() : null;
     if (title !== undefined) doc.title = title;
     if (date !== undefined) doc.date = date;
     if (time !== undefined) doc.time = time;

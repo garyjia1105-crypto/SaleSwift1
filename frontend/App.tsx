@@ -263,6 +263,7 @@ const App: React.FC = () => {
     try {
       const created = await api.schedules.create({
         customerId: schedule.customerId,
+        planId: schedule.planId,
         title: schedule.title,
         date: schedule.date,
         time: schedule.time,
@@ -296,12 +297,47 @@ const App: React.FC = () => {
     }
   };
 
+  /** 按 planId 同步已加入日程的标题（修改下一步计划文案后仍保持关联） */
+  const syncScheduleTitle = async (planId: string, newTitle: string) => {
+    const newNorm = (newTitle || '').trim();
+    if (!planId || !newNorm) return;
+    const toUpdate = schedules.filter((s) => s.planId === planId);
+    for (const s of toUpdate) {
+      try {
+        const updated = await api.schedules.update(s.id, { title: newNorm });
+        setSchedules((prev) => prev.map((x) => (x.id === s.id ? (updated as Schedule) : x)));
+      } catch {
+        toastSaveFailed();
+      }
+    }
+  };
+
   const deleteInteraction = async (id: string) => {
     try {
       await api.interactions.delete(id);
       setInteractions((prev) => prev.filter((x) => x.id !== id));
     } catch {
       toastDeleteFailed();
+    }
+  };
+
+  const updateInteraction = async (id: string, updates: {
+    customerId?: string | null;
+    intelligence?: { nextSteps?: Array<{ action: string; priority?: '高' | '中' | '低'; dueDate?: string }> };
+  }) => {
+    try {
+      const updated = await api.interactions.update(id, updates);
+      setInteractions((prev) => prev.map((x) => {
+        if (x.id !== id) return x;
+        const merged = { ...x, ...updated } as Interaction;
+        if (updates.customerId === null || updates.customerId === '') merged.customerId = undefined;
+        if (updates.intelligence && x.intelligence) {
+          merged.intelligence = { ...x.intelligence, ...updated.intelligence } as Interaction['intelligence'];
+        }
+        return merged;
+      }));
+    } catch {
+      toastSaveFailed();
     }
   };
 
@@ -318,11 +354,18 @@ const App: React.FC = () => {
     try {
       await api.customers.delete(id);
       setCustomers((prev) => prev.filter((c) => c.id !== id));
-      setInteractions((prev) => prev.filter((i) => i.customerId !== id));
       setSchedules((prev) => prev.filter((s) => s.customerId !== id));
-      setCoursePlans((prev) => prev.filter((p) => p.customerId !== id));
     } catch {
       toastDeleteFailed();
+    }
+  };
+
+  const restoreCustomer = async (id: string) => {
+    try {
+      const restored = await api.customers.restore(id);
+      setCustomers((prev) => [restored as Customer, ...prev]);
+    } catch {
+      toastSaveFailed();
     }
   };
 
@@ -435,15 +478,15 @@ const App: React.FC = () => {
             <Routes>
               <Route path="/login" element={<LoginPage onLogin={handleLogin} language={language} setLanguage={setLanguage} />} />
               <Route path="/register" element={<RegisterPage onLogin={handleLogin} language={language} setLanguage={setLanguage} />} />
-              <Route path="/" element={<NewInteractionPage onSave={saveInteraction} customers={customers} interactions={interactions} onAddCustomer={addCustomer} lang={language} />} />
-              <Route path="/new" element={<NewInteractionPage onSave={saveInteraction} customers={customers} interactions={interactions} onAddCustomer={addCustomer} lang={language} />} />
+              <Route path="/" element={<NewInteractionPage onSave={saveInteraction} onUpdateInteraction={updateInteraction} customers={customers} interactions={interactions} onAddCustomer={addCustomer} lang={language} />} />
+              <Route path="/new" element={<NewInteractionPage onSave={saveInteraction} onUpdateInteraction={updateInteraction} customers={customers} interactions={interactions} onAddCustomer={addCustomer} lang={language} />} />
               <Route path="/schedules" element={<SchedulePage schedules={schedules} customers={customers} onAddSchedule={addSchedule} onToggleStatus={toggleScheduleStatus} onUpdateSchedule={updateSchedule} onDeleteSchedule={deleteSchedule} lang={language} />} />
-              <Route path="/customers" element={<CustomerManagementPage customers={customers} interactions={interactions} onSync={saveCustomers} onAdd={addCustomer} onDeleteCustomer={deleteCustomer} lang={language} />} />
-              <Route path="/customers/:id" element={<CustomerDetailPage customers={customers} interactions={interactions} schedules={schedules} coursePlans={coursePlans} onSaveCoursePlan={saveCoursePlan} onAddSchedule={addSchedule} onToggleScheduleStatus={toggleScheduleStatus} onUpdateSchedule={updateSchedule} onUpdateCustomer={updateCustomer} onDeleteCustomer={deleteCustomer} lang={language} />} />
+              <Route path="/customers" element={<CustomerManagementPage customers={customers} interactions={interactions} onSync={saveCustomers} onAdd={addCustomer} onDeleteCustomer={deleteCustomer} onRestoreCustomer={restoreCustomer} lang={language} />} />
+              <Route path="/customers/:id" element={<CustomerDetailPage customers={customers} interactions={interactions} schedules={schedules} coursePlans={coursePlans} onSaveCoursePlan={saveCoursePlan} onAddSchedule={addSchedule} onToggleScheduleStatus={toggleScheduleStatus} onUpdateSchedule={updateSchedule} onDeleteSchedule={deleteSchedule} onUpdateCustomer={updateCustomer} onDeleteCustomer={deleteCustomer} lang={language} />} />
               <Route path="/roleplay/:customerId" element={<RolePlayPage customers={customers} interactions={interactions} lang={language} />} />
               <Route path="/history" element={<HistoryPage interactions={interactions} lang={language} />} />
               <Route path="/growth" element={<GrowthPage interactions={interactions} />} />
-              <Route path="/interaction/:id" element={<InteractionDetailPage interactions={interactions} schedules={schedules} onAddSchedule={addSchedule} onDeleteInteraction={deleteInteraction} lang={language} />} />
+              <Route path="/interaction/:id" element={<InteractionDetailPage interactions={interactions} customers={customers} schedules={schedules} onAddSchedule={addSchedule} onDeleteInteraction={deleteInteraction} onUpdateInteraction={updateInteraction} onUpdateSchedule={updateSchedule} onSyncScheduleTitle={syncScheduleTitle} onAddCustomer={addCustomer} lang={language} />} />
               <Route path="/profile" element={
                 <ProfilePage 
                   user={user}

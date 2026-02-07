@@ -6,13 +6,11 @@ import {
   Loader2,
   Sparkles,
   Upload,
-  UserCheck,
   X,
   CheckCircle2,
   FileAudio,
   Trash2,
   ChevronRight,
-  ChevronDown,
   Calendar,
   FileText,
   Copy,
@@ -29,6 +27,7 @@ import { useTheme } from '../contexts/ThemeContext';
 
 interface Props {
   onSave: (interaction: Interaction) => void | Promise<Interaction | null>;
+  onUpdateInteraction?: (id: string, updates: { customerId?: string | null }) => void | Promise<void>;
   customers: Customer[];
   interactions: Interaction[];
   onAddCustomer: (customer: Customer) => Customer | Promise<Customer>;
@@ -62,6 +61,31 @@ const sentimentColor = (s: string | undefined) => {
   if (s === '负面') return { dot: 'bg-rose-500', text: 'text-rose-600' };
   return { dot: 'bg-gray-400', text: 'text-gray-600' };
 };
+
+/** 根据复盘客户画像（姓名、公司）在客户列表中自动匹配一条，优先姓名+公司都匹配。 */
+function findCustomerByProfile(
+  profile: { name?: string; company?: string },
+  customers: Customer[]
+): Customer | null {
+  const nameNorm = (profile?.name ?? '').trim().toLowerCase();
+  const companyNorm = (profile?.company ?? '').trim().toLowerCase();
+  if (!nameNorm && !companyNorm) return null;
+  const byBoth = customers.find(
+    (c) =>
+      (c.name ?? '').trim().toLowerCase() === nameNorm &&
+      (c.company ?? '').trim().toLowerCase() === companyNorm
+  );
+  if (byBoth) return byBoth;
+  if (nameNorm) {
+    const byName = customers.find((c) => (c.name ?? '').trim().toLowerCase() === nameNorm);
+    if (byName) return byName;
+  }
+  if (companyNorm) {
+    const byCompany = customers.find((c) => (c.company ?? '').trim().toLowerCase() === companyNorm);
+    if (byCompany) return byCompany;
+  }
+  return null;
+}
 
 // 日期范围计算函数
 const getDateRange = (type: string): { startDate: string; endDate: string } => {
@@ -128,7 +152,7 @@ const getDateRange = (type: string): { startDate: string; endDate: string } => {
   }
 };
 
-const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, onAddCustomer, lang }) => {
+const NewInteractionPage: React.FC<Props> = ({ onSave, onUpdateInteraction, customers, interactions, onAddCustomer, lang }) => {
   const t = translations[lang].new;
   const tHistory = (translations[lang] ?? translations.zh).history;
   const { colors, theme } = useTheme();
@@ -136,7 +160,6 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [recording, setRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
-  const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [pendingResult, setPendingResult] = useState<Interaction | null>(null);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -158,7 +181,17 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const autoStartRecordingRef = useRef(false);
   const navigate = useNavigate();
+
+  // 由麦克风按钮打开对话框时，弹窗后自动开始录音
+  useEffect(() => {
+    if (!showInterviewDialog) return;
+    if (!autoStartRecordingRef.current) return;
+    autoStartRecordingRef.current = false;
+    const t = setTimeout(() => { startRecording(); }, 150);
+    return () => clearTimeout(t);
+  }, [showInterviewDialog]);
 
   const hasContent = input.trim().length > 0 || selectedFile !== null;
 
@@ -186,18 +219,19 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
           date: new Date().toISOString(),
           rawInput: input || 'Voice Input'
         };
-        if (selectedCustomerId) {
-          await finalizeSave(result, selectedCustomerId);
+        // 先保存复盘（不关联客户），再由系统自动识别关联，并直接跳转详情页
+        const saved = await onSave({ ...result, customerId: undefined });
+        if (saved) {
+          const match = findCustomerByProfile(saved.customerProfile ?? {}, customers);
+          if (match && onUpdateInteraction) await onUpdateInteraction(saved.id, { customerId: match.id });
           setShowInterviewDialog(false);
-          return;
+          setInput('');
+          setSelectedFile(null);
+          setPendingResult(null);
+          navigate(`/interaction/${saved.id}`);
+        } else {
+          setAnalyzeError(lang === 'zh' ? '保存失败，请重试' : lang === 'en' ? 'Save failed, please retry' : lang === 'ja' ? '保存に失敗しました' : '저장 실패');
         }
-        setPendingResult(result);
-        setShowInterviewDialog(false);
-        setNewCustomerData({
-          name: aiResult.customerProfile.name || '',
-          company: aiResult.customerProfile.company || ''
-        });
-        setShowLinkModal(true);
       }
     } catch (e) {
       setAnalyzeError((e as Error)?.message || 'AI analysis failed');
@@ -576,7 +610,10 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
           </button>
           <button
             type="button"
-            onClick={() => { setShowInterviewDialog(true); }}
+            onClick={() => {
+              autoStartRecordingRef.current = true;
+              setShowInterviewDialog(true);
+            }}
             className={`shrink-0 w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-all btn-active-scale ${colors.button.primary} ring-2 ring-white/50`}
             title={t.record}
             aria-label={t.record}
@@ -589,7 +626,14 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
       {/* 访谈内容对话框 */}
       {showInterviewDialog && (
         <>
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50" onClick={() => setShowInterviewDialog(false)} aria-hidden />
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
+            onClick={() => {
+              if (recording || mediaRecorderRef.current?.state === 'recording' || mediaRecorderRef.current?.state === 'paused') finishRecording();
+              setShowInterviewDialog(false);
+            }}
+            aria-hidden
+          />
           <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-24 pointer-events-none">
             <div
               className={`w-full max-w-[min(100%,28rem)] max-h-[85vh] flex flex-col rounded-t-3xl shadow-2xl pointer-events-auto animate-in slide-in-from-bottom duration-300 ${colors.bg.card} border ${colors.border.default}`}
@@ -597,7 +641,15 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
             >
               <div className="flex items-center justify-between p-3 border-b shrink-0 border-gray-200/50">
                 <span className={`text-sm font-bold ${colors.text.primary}`}>{t.manual_input || '访谈内容'}</span>
-                <button type="button" onClick={() => setShowInterviewDialog(false)} className={`p-1.5 rounded-lg ${colors.bg.hover}`} aria-label={t.cancel}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (recording || mediaRecorderRef.current?.state === 'recording' || mediaRecorderRef.current?.state === 'paused') finishRecording();
+                    setShowInterviewDialog(false);
+                  }}
+                  className={`p-1.5 rounded-lg ${colors.bg.hover}`}
+                  aria-label={t.cancel}
+                >
                   <X size={18} />
                 </button>
               </div>
@@ -641,21 +693,6 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
                   >
                     {isAnalyzing ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={20} />}
                   </button>
-                </div>
-                <div className={`relative min-w-0 min-h-[40px] ${colors.badge.primary} rounded-xl flex items-center pl-2 pr-7 py-2 ${colors.border.accent}`}>
-                  <UserCheck className={`${colors.text.accent} shrink-0`} size={12} />
-                  <select
-                    className="flex-1 min-w-0 bg-transparent text-[10px] font-bold outline-none appearance-none"
-                    value={selectedCustomerId}
-                    onChange={(e) => setSelectedCustomerId(e.target.value)}
-                    style={{ color: 'inherit' }}
-                  >
-                    <option value="">{t.match_customer}</option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}{c.company ? ` · ${c.company}` : ''}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none" size={12} />
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <button

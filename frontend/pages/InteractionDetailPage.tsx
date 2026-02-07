@@ -25,15 +25,17 @@ import {
   RefreshCw,
   Copy,
   Check,
-  Trash2
+  Trash2,
+  Pencil,
+  Plus
 } from 'lucide-react';
-import { Interaction, Schedule } from '../types';
+import { Interaction, Schedule, Customer } from '../types';
 import { deepDiveIntoInterest, continueDeepDiveIntoInterest, askAboutInteraction } from '../services/aiService';
 import { translations, Language } from '../translations';
 import { useTheme } from '../contexts/ThemeContext';
 import ConfirmDialog from '../components/ConfirmDialog';
 
-const DetailSection: React.FC<{ title: string, icon: React.ReactNode, children: React.ReactNode, variant?: 'primary' | 'secondary' | 'default' }> = ({ title, icon, children, variant = 'default' }) => {
+const DetailSection: React.FC<{ title: string, icon: React.ReactNode, children: React.ReactNode, variant?: 'primary' | 'secondary' | 'default', rightContent?: React.ReactNode }> = ({ title, icon, children, variant = 'default', rightContent }) => {
   const headerClass = variant === 'primary' 
     ? 'bg-blue-600 text-white' 
     : variant === 'secondary'
@@ -46,6 +48,7 @@ const DetailSection: React.FC<{ title: string, icon: React.ReactNode, children: 
       <div className={`px-4 md:px-6 py-3 md:py-4 flex items-center gap-2 ${headerClass}`}>
         <div className={iconClass}>{React.cloneElement(icon as React.ReactElement, { size: 16 })}</div>
         <h3 className="font-bold text-sm md:text-base">{title}</h3>
+        {rightContent != null && <div className="ml-auto shrink-0">{rightContent}</div>}
       </div>
       <div className="p-4 md:p-6 bg-white">
         {children}
@@ -105,13 +108,18 @@ const MarkdownContent: React.FC<{ content: string, inverse?: boolean }> = ({ con
 
 interface Props {
   interactions: Interaction[];
+  customers: Customer[];
   schedules: Schedule[];
-  onAddSchedule?: (s: Schedule) => void;
+  onAddSchedule?: (s: Schedule) => void | Promise<void>;
   onDeleteInteraction?: (id: string) => void;
+  onUpdateInteraction?: (id: string, updates: { customerId?: string | null; intelligence?: { nextSteps?: Array<{ id?: string; action: string; priority?: '高' | '中' | '低'; dueDate?: string }> } }) => void;
+  onSyncScheduleTitle?: (planId: string, newTitle: string) => void | Promise<void>;
+  onUpdateSchedule?: (id: string, updates: Partial<Schedule>) => void | Promise<void>;
+  onAddCustomer?: (customer: Customer) => Promise<Customer | void>;
   lang: Language;
 }
 
-const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAddSchedule, onDeleteInteraction, lang }) => {
+const InteractionDetailPage: React.FC<Props> = ({ interactions, customers = [], schedules, onAddSchedule, onDeleteInteraction, onUpdateInteraction, onUpdateSchedule, onSyncScheduleTitle, onAddCustomer, lang }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { colors, theme } = useTheme();
@@ -130,11 +138,22 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
   const [assistantHistory, setAssistantHistory] = useState<{ role: 'user' | 'model', text: string }[]>([]);
   const [assistantInput, setAssistantInput] = useState('');
   const [isAssistantThinking, setIsAssistantThinking] = useState(false);
-  const [addingAction, setAddingAction] = useState<string | null>(null);
+  const [addingPlanId, setAddingPlanId] = useState<string | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportCopied, setReportCopied] = useState(false);
   const [reportCopyFailed, setReportCopyFailed] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ title: string; message: string; confirmLabel: string; cancelLabel: string; onConfirm: () => void } | null>(null);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkSearch, setLinkSearch] = useState('');
+  const [showAddCustomerInLink, setShowAddCustomerInLink] = useState(false);
+  const [newLinkCustomer, setNewLinkCustomer] = useState({ name: '', company: '', role: '' });
+  const [editingNextSteps, setEditingNextSteps] = useState(false);
+  const [nextStepsDraft, setNextStepsDraft] = useState<{ id?: string; action: string; priority: '高' | '中' | '低'; dueDate?: string }[]>([]);
+  
+  const linkedCustomer = useMemo(() => 
+    item?.customerId ? customers.find(c => c.id === item.customerId) ?? null : null,
+    [customers, item?.customerId]
+  );
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const assistantChatEndRef = useRef<HTMLDivElement>(null);
@@ -148,9 +167,61 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
     }
   }, [assistantInput]);
 
-  const isScheduled = useMemo(() => (action: string) => {
-    return schedules.some(s => s.customerId === item?.customerId && s.title === action);
-  }, [schedules, item]);
+  /** 本复盘下一步计划（带稳定 id，后端会补全），用于展示与匹配日程。 */
+  const stepsWithId = useMemo(() => {
+    const steps = item?.intelligence?.nextSteps ?? [];
+    return steps.map((s, i) => ({ ...s, id: (s as { id?: string }).id || `step-${i}` }));
+  }, [item?.intelligence?.nextSteps]);
+
+  /** 本复盘下一步计划的 planId 集合。 */
+  const nextStepIds = useMemo(() => new Set(stepsWithId.map(s => s.id).filter(Boolean)), [stepsWithId]);
+  /** 本复盘下一步计划标题集合，用于迁移无 planId 的旧日程。 */
+  const nextStepTitles = useMemo(() => new Set(stepsWithId.map(s => (s.action || '').trim()).filter(Boolean)), [stepsWithId]);
+
+  /** 将「本复盘下一步计划」已入日程的条目批量改客户（或清空），只更新 customerId，不删 planId。含无 planId 的旧日程（按标题匹配）。 */
+  const migrateSchedulesForNextSteps = async (oldCustomerId: string | null, newCustomerId: string | null) => {
+    if (!onUpdateSchedule) return;
+    const toUpdate = schedules.filter(s => {
+      if ((s.customerId ?? null) !== oldCustomerId) return false;
+      if (s.planId && nextStepIds.has(s.planId)) return true;
+      const titleNorm = (s.title || '').trim();
+      return nextStepTitles.has(titleNorm);
+    });
+    for (const s of toUpdate) {
+      await onUpdateSchedule(s.id, { customerId: newCustomerId } as Partial<Schedule>);
+    }
+  };
+
+  /** 是否已加入日程：优先按 planId 匹配，无 planId 时按 customerId+title 兼容旧数据。 */
+  const isScheduled = useMemo(() => (step: { id?: string; action: string }) => {
+    const planId = step.id;
+    const cid = item?.customerId ?? null;
+    const actionNorm = (step.action || '').trim();
+    return schedules.some(s => {
+      if (planId && s.planId === planId) return true;
+      const scid = s.customerId ?? null;
+      const titleNorm = (s.title || '').trim();
+      return scid === cid && titleNorm === actionNorm;
+    });
+  }, [schedules, item?.customerId]);
+
+  const tInt = t as Record<string, string>;
+  const getPriorityLabel = (p: '高' | '中' | '低') => p === '高' ? (tInt.priority_high ?? '高') : p === '中' ? (tInt.priority_medium ?? '中') : (tInt.priority_low ?? '低');
+
+  /** 返回该行动项对应的日程状态：未加入 null，已加入待办 'pending'，已完成 'completed'。 */
+  const getScheduleStatusForAction = useMemo(() => (step: { id?: string; action: string }): 'pending' | 'completed' | null => {
+    const planId = step.id;
+    const cid = item?.customerId ?? null;
+    const actionNorm = (step.action || '').trim();
+    const found = schedules.find(s => {
+      if (planId && s.planId === planId) return true;
+      const scid = s.customerId ?? null;
+      const titleNorm = (s.title || '').trim();
+      return scid === cid && titleNorm === actionNorm;
+    });
+    if (!found) return null;
+    return found.status === 'completed' ? 'completed' : 'pending';
+  }, [schedules, item?.customerId]);
 
   useEffect(() => {
     if (chatEndRef.current) {
@@ -164,16 +235,21 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
     }
   }, [assistantHistory, isAssistantThinking]);
 
-  // 当某个「下一步」被添加为日程后，自动清除对应的 loading 状态
+  // 当某个「下一步」被添加为日程后（按 planId 或 title 匹配），自动清除 loading
   useEffect(() => {
-    if (!addingAction) return;
-    const exists = schedules.some(
-      (s) => s.customerId === item.customerId && s.title === addingAction
-    );
-    if (exists) {
-      setAddingAction(null);
+    if (!addingPlanId) return;
+    const exists = schedules.some(s => s.planId === addingPlanId);
+    if (exists) setAddingPlanId(null);
+    else {
+      const step = stepsWithId.find(s => s.id === addingPlanId);
+      if (step) {
+        const cid = item?.customerId ?? null;
+        const actionNorm = (step.action || '').trim();
+        const byTitle = schedules.some(s => (s.customerId ?? null) === cid && (s.title || '').trim() === actionNorm);
+        if (byTitle) setAddingPlanId(null);
+      }
     }
-  }, [addingAction, schedules, item.customerId]);
+  }, [addingPlanId, schedules, stepsWithId, item?.customerId]);
 
   if (!item) return (
     <div className="text-center py-20 space-y-4">
@@ -237,19 +313,24 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
   const sentimentColor = item.metrics?.sentiment === '正面' ? 'text-emerald-600' :
                          item.metrics?.sentiment === '负面' ? 'text-rose-600' : 'text-gray-600';
 
-  const handleAddToSchedule = (step: any) => {
-    if (!onAddSchedule || isScheduled(step.action)) return;
+  const handleAddToSchedule = async (step: { id?: string; action: string; dueDate?: string }) => {
+    if (!onAddSchedule || isScheduled(step)) return;
     let date = step.dueDate || "";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) date = new Date().toISOString().split('T')[0];
-    setAddingAction(step.action);
-    onAddSchedule({
-      id: `sched-auto-${Date.now()}`,
-      customerId: item.customerId,
-      title: step.action,
-      date: date,
-      status: 'pending',
-      description: `互动复盘: ${item.customerProfile?.name ?? '客户'}`
-    });
+    setAddingPlanId(step.id || null);
+    try {
+      await Promise.resolve(onAddSchedule({
+        id: `sched-auto-${Date.now()}`,
+        customerId: item.customerId,
+        planId: step.id,
+        title: step.action,
+        date: date,
+        status: 'pending',
+        description: `互动复盘: ${item.customerProfile?.name ?? '客户'}`
+      }));
+    } finally {
+      setAddingPlanId(null);
+    }
   };
 
   const handleDeepDive = async (interest: string) => {
@@ -352,10 +433,72 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
         </div>
       </div>
 
+      {/* 关联客户 */}
+      {onUpdateInteraction && (
+        <div className={`mb-4 p-3 rounded-xl border ${colors.border.light} ${colors.bg.card} flex items-center justify-between gap-3 flex-wrap`}>
+          <div className="flex items-center gap-2 min-w-0">
+            <UserIcon size={16} className={`shrink-0 ${colors.text.accent}`} />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{tInt.link_customer ?? '关联客户'}</span>
+            <span className={`text-xs font-bold truncate ${colors.text.primary}`}>
+              {linkedCustomer ? `${linkedCustomer.name} · ${linkedCustomer.company}` : tInt.no_linked_customer ?? '未关联客户'}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {!item.customerId && (
+              <button
+                type="button"
+                onClick={() => { setShowAddCustomerInLink(false); setLinkSearch(''); setShowLinkModal(true); }}
+                className={`shrink-0 px-2.5 py-1.5 rounded-lg text-[10px] font-bold btn-active-scale border ${colors.primary.border} ${colors.button.primary}`}
+              >
+                {tInt.link_btn ?? '关联'}
+              </button>
+            )}
+            {onAddCustomer && !item.customerId && (
+              <button
+                type="button"
+                onClick={() => {
+                setNewLinkCustomer({
+                  name: item.customerProfile?.name ?? '',
+                  company: item.customerProfile?.company ?? '',
+                  role: item.customerProfile?.role ?? '',
+                });
+                setShowAddCustomerInLink(true);
+                setLinkSearch('');
+                setShowLinkModal(true);
+              }}
+                className={`shrink-0 px-2.5 py-1.5 rounded-lg text-[10px] font-bold btn-active-scale border ${colors.primary.border} ${colors.button.primary} flex items-center gap-1`}
+              >
+                <Plus size={12} />{tInt.add_btn ?? '添加'}
+              </button>
+            )}
+            {item.customerId && (
+              <button
+                type="button"
+                onClick={async () => {
+                  await migrateSchedulesForNextSteps(item.customerId ?? null, null);
+                  onUpdateInteraction(item.id, { customerId: null });
+                }}
+                className="shrink-0 px-2.5 py-1.5 rounded-lg text-[10px] font-bold btn-active-scale border border-gray-200 text-gray-600 hover:bg-gray-100"
+              >
+                {tInt.unlink ?? '取消关联'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-6 md:mb-8">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-baseline gap-2 gap-y-0.5 mb-1.5">
             <h2 className={`text-2xl md:text-3xl font-black tracking-tight ${colors.text.primary}`}>{item.customerProfile?.name ?? '—'}</h2>
+            <span className="text-xs md:text-base text-gray-500 font-bold uppercase tracking-wider">{item.customerProfile?.company ?? '—'}</span>
+            {(item.customerProfile?.role || item.customerProfile?.industry) && (
+              <span className="text-[10px] text-gray-400 font-medium">
+                {[item.customerProfile?.role, item.customerProfile?.industry].filter(Boolean).join(' · ')}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
               theme === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
               theme === 'orange' ? 'bg-orange-50 text-orange-600 border border-orange-200' :
@@ -364,33 +507,13 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
             }`}>
               {item.intelligence?.currentStage ?? '—'}
             </span>
-          </div>
-          <p className="text-xs md:text-base text-gray-500 font-bold uppercase tracking-wider">{item.customerProfile?.company ?? '—'}</p>
-          {(item.customerProfile?.role || item.customerProfile?.industry) && (
-            <p className="text-[10px] text-gray-400 mt-0.5 font-medium">
-              {[item.customerProfile?.role, item.customerProfile?.industry].filter(Boolean).join(' · ')}
-            </p>
-          )}
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <div className="flex flex-row items-center gap-2 md:gap-1">
-            <span className="text-gray-400 text-[9px] font-black uppercase tracking-widest">{t.confidence}</span>
-            <div className="flex items-center gap-2 bg-white px-2.5 py-1 rounded-full border border-gray-100 shadow-sm">
-              <div className="w-16 md:w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-600" style={{ width: `${item.metrics?.confidenceScore ?? 0}%` }}></div>
-              </div>
-              <span className="font-black text-[10px] text-gray-900">{item.metrics?.confidenceScore ?? 0}%</span>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center justify-end gap-1.5 text-[9px]">
-            <span className="text-gray-400 font-bold uppercase tracking-wider">{t.talk_ratio}</span>
-            <span className="text-gray-900 font-black">{((item.metrics?.talkRatio ?? 0) * 100).toFixed(0)}%</span>
-            <span className="text-gray-300">·</span>
-            <span className="text-gray-400 font-bold uppercase tracking-wider">{t.questions}</span>
-            <span className="text-gray-900 font-black">{item.metrics?.questionRate ?? '—'}</span>
-            <span className="text-gray-300">·</span>
-            <span className="text-gray-400 font-bold uppercase tracking-wider">{t.sentiment}</span>
-            <span className={`font-black ${sentimentColor}`}>{item.metrics?.sentiment ?? '—'}</span>
+            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${sentimentColor}`}>
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                item.metrics?.sentiment === '正面' ? 'bg-emerald-500' :
+                item.metrics?.sentiment === '负面' ? 'bg-rose-500' : 'bg-gray-400'
+              }`} />
+              {item.metrics?.sentiment ?? '—'}
+            </span>
           </div>
         </div>
       </div>
@@ -452,47 +575,150 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
           </DetailSection>
 
         {/* Next Steps */}
-          <DetailSection title={t.next_steps} icon={<Calendar />} variant="secondary">
-            <div className="space-y-3">
-              {(item.intelligence?.nextSteps ?? []).map((step, i) => {
-                const alreadyScheduled = isScheduled(step.action);
-                return (
-                  <div key={i} className={`p-3.5 border rounded-2xl flex items-center justify-between gap-3 transition-all ${alreadyScheduled ? 'bg-gray-50/50 border-gray-100 opacity-60' : 'bg-white border-indigo-50 shadow-sm hover:border-indigo-200'}`}>
-                    <div className="min-w-0 flex-1 overflow-hidden">
-                      <div className="flex items-start gap-2 mb-1">
-                         <div className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${
-                            step.priority === '高' ? 'bg-rose-500' : step.priority === '中' ? 'bg-amber-500' : 'bg-blue-500'
-                          }`}></div>
-                         <p className={`text-[11px] font-black break-words ${alreadyScheduled ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{step.action}</p>
-                      </div>
-                      {step.dueDate && <div className="flex items-center gap-1 text-[9px] text-gray-400 font-bold ml-3.5 uppercase"><Clock size={10} /> {step.dueDate}</div>}
-                    </div>
-                    {onAddSchedule && (
-                      <button 
-                        onClick={() => handleAddToSchedule(step)} 
-                        disabled={alreadyScheduled || addingAction === step.action}
-                        className={`p-2 rounded-xl transition-all shrink-0 ${
-                          alreadyScheduled
-                            ? 'text-emerald-500'
-                            : 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100 active:scale-90 shadow-sm disabled:opacity-60'
-                        }`}
+          <DetailSection
+            title={t.next_steps}
+            icon={<Calendar />}
+            variant="secondary"
+            rightContent={!editingNextSteps && onUpdateInteraction ? (
+              <button
+                type="button"
+                onClick={() => { setNextStepsDraft([...stepsWithId]); setEditingNextSteps(true); }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-white/90 hover:text-white hover:bg-white/20 text-xs font-bold transition-colors"
+              >
+                <Pencil size={14} />{(t as Record<string, string>).edit ?? '编辑'}
+              </button>
+            ) : undefined}
+          >
+            {editingNextSteps ? (
+              <div className="space-y-2">
+                {nextStepsDraft.map((step, i) => (
+                  <div key={i} className="p-2 border rounded-lg border-indigo-100 bg-white flex flex-col gap-2">
+                    <input
+                      value={step.action}
+                      onChange={(e) => setNextStepsDraft(prev => prev.map((s, j) => j === i ? { ...s, action: e.target.value } : s))}
+                      placeholder={lang === 'zh' ? '行动项' : lang === 'en' ? 'Action' : lang === 'ja' ? 'アクション' : '액션'}
+                      className={`w-full min-w-0 px-2.5 py-2 text-xs font-medium rounded border ${colors.border.light} ${colors.bg.input} outline-none focus:ring-1 ${colors.primary.ring}`}
+                    />
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <select
+                        value={step.priority}
+                        onChange={(e) => setNextStepsDraft(prev => prev.map((s, j) => j === i ? { ...s, priority: e.target.value as '高' | '中' | '低' } : s))}
+                        title={tInt.priority_label}
+                        className={`px-2 py-2 text-[11px] font-bold rounded border ${colors.border.light} ${colors.bg.input} min-w-[4rem]`}
                       >
-                        {alreadyScheduled ? (
-                          <div className="flex items-center gap-1">
-                            <span className="text-[8px] font-black uppercase">{t.scheduled}</span>
-                            <CheckCircle2 size={16} />
-                          </div>
-                        ) : addingAction === step.action ? (
-                          <Loader2 size={16} className="animate-spin" />
-                        ) : (
-                          <CalendarPlus size={18} />
-                        )}
+                        <option value="高">{getPriorityLabel('高')}</option>
+                        <option value="中">{getPriorityLabel('中')}</option>
+                        <option value="低">{getPriorityLabel('低')}</option>
+                      </select>
+                      <input
+                        value={step.dueDate ?? ''}
+                        onChange={(e) => setNextStepsDraft(prev => prev.map((s, j) => j === i ? { ...s, dueDate: e.target.value || undefined } : s))}
+                        placeholder={lang === 'zh' ? '截止日期' : lang === 'en' ? 'Due' : lang === 'ja' ? '期限' : '기한'}
+                        className={`px-2 py-2 text-[11px] rounded border ${colors.border.light} ${colors.bg.input} min-w-[5rem] flex-1`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setNextStepsDraft(prev => prev.filter((_, j) => j !== i))}
+                        className="shrink-0 p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                        title={tInt.remove ?? '删除'}
+                      >
+                        <Trash2 size={16} />
                       </button>
-                    )}
+                    </div>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setNextStepsDraft(prev => [...prev, { id: 'step-' + Date.now(), action: '', priority: '中', dueDate: undefined }])}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border ${colors.primary.border} ${colors.button.primary} btn-active-scale`}
+                  >
+                    <Plus size={12} />{tInt.add_step ?? '添加一项'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!onUpdateInteraction) return;
+                      const newSteps = nextStepsDraft.filter(s => (s.action || '').trim()).map(s => ({ ...s, id: s.id || 'step-' + Date.now() }));
+                      await Promise.resolve(onUpdateInteraction(item.id, { intelligence: { ...item.intelligence, nextSteps: newSteps } }));
+                      if (onSyncScheduleTitle) {
+                        for (const step of newSteps) {
+                          if (step.id && (step.action || '').trim()) await Promise.resolve(onSyncScheduleTitle(step.id, step.action.trim()));
+                        }
+                      }
+                      setEditingNextSteps(false);
+                    }}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold btn-active-scale ${colors.button.primary}`}
+                  >
+                    <Check size={12} />{tInt.save ?? '保存'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEditingNextSteps(false); setNextStepsDraft([...stepsWithId]); }}
+                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 btn-active-scale"
+                  >
+                    {tInt.cancel ?? '取消'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {stepsWithId.map((step, i) => {
+                  const alreadyScheduled = isScheduled(step);
+                  const scheduleStatus = getScheduleStatusForAction(step);
+                  const isCompleted = scheduleStatus === 'completed';
+                  return (
+                    <div key={step.id || i} className={`p-3.5 border rounded-2xl flex items-center justify-between gap-3 transition-all ${alreadyScheduled ? 'bg-gray-50/50 border-gray-100 opacity-60' : 'bg-white border-indigo-50 shadow-sm hover:border-indigo-200'}`}>
+                      <div className="min-w-0 flex-1 overflow-hidden">
+                        <div className="flex items-start gap-2 mb-1">
+                           <div
+                              className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${
+                                step.priority === '高' ? 'bg-rose-500' : step.priority === '中' ? 'bg-amber-500' : 'bg-blue-500'
+                              }`}
+                              title={`${tInt.priority_label ?? '优先级'}: ${getPriorityLabel(step.priority)}`}
+                            />
+                           <p className={`text-[11px] font-black break-words ${alreadyScheduled ? (isCompleted ? 'text-gray-400 line-through' : 'text-gray-400') : 'text-gray-900'}`}>{step.action}</p>
+                        </div>
+                        {step.dueDate && <div className="flex items-center gap-1 text-[9px] text-gray-400 font-bold ml-3.5 uppercase"><Clock size={10} /> {step.dueDate}</div>}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {onAddSchedule && (
+                          <button 
+                            onClick={() => handleAddToSchedule(step)} 
+                            disabled={alreadyScheduled || addingPlanId === step.id}
+                            className={`p-2 rounded-xl transition-all shrink-0 ${
+                              alreadyScheduled
+                                ? 'text-emerald-500'
+                                : 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100 active:scale-90 shadow-sm disabled:opacity-60'
+                            }`}
+                          >
+                            {alreadyScheduled ? (
+                              <div className="flex items-center gap-1">
+                                <span className="text-[8px] font-black uppercase">{t.scheduled}</span>
+                                <CheckCircle2 size={16} />
+                              </div>
+                            ) : addingPlanId === step.id ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                              <CalendarPlus size={18} />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {onUpdateInteraction && stepsWithId.length === 0 && (
+                  <button
+                    type="button"
+                    onClick={() => { setNextStepsDraft([]); setEditingNextSteps(true); }}
+                    className={`w-full py-3 rounded-xl border border-dashed ${colors.border.light} text-gray-500 hover:bg-gray-50 flex items-center justify-center gap-2 text-xs font-bold`}
+                  >
+                    <Plus size={14} />{(t as Record<string, string>).add_step ?? '添加一项'}
+                  </button>
+                )}
+              </div>
+            )}
           </DetailSection>
 
       </div>
@@ -641,6 +867,126 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
           cancelLabel={deleteConfirm.cancelLabel}
           variant="danger"
         />
+      )}
+
+      {/* 修改关联客户弹窗 */}
+      {showLinkModal && onUpdateInteraction && (
+        <>
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50" onClick={() => { setShowLinkModal(false); setShowAddCustomerInLink(false); setLinkSearch(''); }} aria-hidden />
+          <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-24 pointer-events-none">
+            <div className={`w-full max-w-[min(100%,28rem)] max-h-[70vh] rounded-t-3xl shadow-2xl pointer-events-auto animate-in slide-in-from-bottom duration-300 flex flex-col ${colors.bg.card} border ${colors.border.default}`} onClick={(e) => e.stopPropagation()}>
+              <div className="shrink-0 flex justify-between items-center p-4 border-b border-gray-100">
+                <span className={`text-sm font-bold ${colors.text.primary}`}>{showAddCustomerInLink ? (tInt.link_add_customer ?? '添加客户') : (tInt.change_link ?? '修改关联')}</span>
+                <button type="button" onClick={() => { setShowLinkModal(false); setShowAddCustomerInLink(false); setLinkSearch(''); }} className={`p-1.5 rounded-lg ${colors.bg.hover}`} aria-label="Close">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-2 min-h-0">
+                {!showAddCustomerInLink ? (
+                  <>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+                      <input
+                        type="text"
+                        value={linkSearch}
+                        onChange={(e) => setLinkSearch(e.target.value)}
+                        placeholder={tInt.link_search_placeholder ?? '搜索姓名、公司'}
+                        className={`w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border ${colors.border.light} ${colors.bg.input} outline-none focus:ring-1 ${colors.primary.ring}`}
+                      />
+                    </div>
+                    {(() => {
+                      const q = (linkSearch || '').trim().toLowerCase();
+                      const filtered = q ? customers.filter(c => (c.name || '').toLowerCase().includes(q) || (c.company || '').toLowerCase().includes(q)) : customers;
+                      return filtered.length === 0 ? (
+                        <p className="text-[11px] text-gray-400 py-2">{q ? (lang === 'zh' ? '未找到匹配客户' : lang === 'en' ? 'No match' : lang === 'ja' ? '該当なし' : '검색 결과 없음') : ''}</p>
+                      ) : (
+                        filtered.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={async () => {
+                              if (c.id !== item.customerId) await migrateSchedulesForNextSteps(item.customerId ?? null, c.id);
+                              onUpdateInteraction(item.id, { customerId: c.id });
+                              setShowLinkModal(false);
+                            }}
+                            className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold border btn-active-scale flex items-center gap-3 ${
+                              item.customerId === c.id ? `${colors.primary.border} ${colors.button.primary}` : `${colors.border.light} ${colors.bg.hover} ${colors.text.primary}`
+                            }`}
+                          >
+                            <UserIcon size={16} className="shrink-0" />
+                            <span className="truncate">{c.name}</span>
+                            <span className="text-gray-400 truncate">· {c.company}</span>
+                          </button>
+                        ))
+                      );
+                    })()}
+                  </>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-bold text-gray-500 uppercase">{tInt.link_add_customer ?? '添加客户'}</p>
+                    {(() => {
+                      const tC = (translations[lang] ?? translations.zh).customers as Record<string, string>;
+                      return (
+                        <form
+                          onSubmit={async (e) => {
+                            e.preventDefault();
+                            if (!onAddCustomer || !newLinkCustomer.name.trim() || !newLinkCustomer.company.trim()) return;
+                            const created = await onAddCustomer({
+                              id: '',
+                              name: newLinkCustomer.name.trim(),
+                              company: newLinkCustomer.company.trim(),
+                              role: newLinkCustomer.role.trim(),
+                              industry: '',
+                              tags: [],
+                              createdAt: new Date().toISOString(),
+                            });
+                            if (created?.id && onUpdateInteraction) {
+                              await migrateSchedulesForNextSteps(item.customerId ?? null, created.id);
+                              onUpdateInteraction(item.id, { customerId: created.id });
+                              setShowLinkModal(false);
+                              setShowAddCustomerInLink(false);
+                              setNewLinkCustomer({ name: '', company: '', role: '' });
+                            }
+                          }}
+                          className="space-y-2"
+                        >
+                          <input
+                            required
+                            value={newLinkCustomer.name}
+                            onChange={(e) => setNewLinkCustomer(prev => ({ ...prev, name: e.target.value }))}
+                            placeholder={tC.name ?? '姓名'}
+                            className={`w-full px-3 py-2 text-xs rounded-lg border ${colors.border.light} ${colors.bg.input} outline-none focus:ring-1 ${colors.primary.ring}`}
+                          />
+                          <input
+                            required
+                            value={newLinkCustomer.company}
+                            onChange={(e) => setNewLinkCustomer(prev => ({ ...prev, company: e.target.value }))}
+                            placeholder={tC.company ?? '公司'}
+                            className={`w-full px-3 py-2 text-xs rounded-lg border ${colors.border.light} ${colors.bg.input} outline-none focus:ring-1 ${colors.primary.ring}`}
+                          />
+                          <input
+                            value={newLinkCustomer.role}
+                            onChange={(e) => setNewLinkCustomer(prev => ({ ...prev, role: e.target.value }))}
+                            placeholder={lang === 'zh' ? '职位' : lang === 'en' ? 'Role' : lang === 'ja' ? '役職' : '직책'}
+                            className={`w-full px-3 py-2 text-xs rounded-lg border ${colors.border.light} ${colors.bg.input} outline-none focus:ring-1 ${colors.primary.ring}`}
+                          />
+                          <div className="flex gap-2 pt-1">
+                            <button type="button" onClick={() => { setShowAddCustomerInLink(false); setNewLinkCustomer({ name: '', company: '', role: '' }); }} className={`flex-1 py-2 rounded-xl text-xs font-bold border ${colors.border.light} ${colors.text.secondary} ${colors.bg.hover}`}>
+                              {tInt.cancel ?? '取消'}
+                            </button>
+                            <button type="submit" className={`flex-1 py-2 rounded-xl text-xs font-bold ${colors.button.primary}`}>
+                              {tInt.save ?? '保存'} & {tInt.change_link ?? '关联'}
+                            </button>
+                          </div>
+                        </form>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Interactive Deep Dive Q&A Modal */}

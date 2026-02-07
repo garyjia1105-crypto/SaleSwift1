@@ -46,7 +46,7 @@ const userSchema = new mongoose.Schema(
 );
 export const User = mongoose.model('User', userSchema);
 
-// Customer schema
+// Customer schema（软删除：deletedAt 有值表示已删除）
 const customerSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
@@ -57,10 +57,12 @@ const customerSchema = new mongoose.Schema(
     email: { type: String },
     phone: { type: String },
     tags: { type: [String], default: [] },
+    deletedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
 customerSchema.index({ userId: 1, createdAt: -1 });
+customerSchema.index({ userId: 1, deletedAt: 1 });
 export const Customer = mongoose.model('Customer', customerSchema);
 
 // Interaction schema
@@ -80,11 +82,12 @@ const interactionSchema = new mongoose.Schema(
 interactionSchema.index({ userId: 1, customerId: 1 });
 export const Interaction = mongoose.model('Interaction', interactionSchema);
 
-// Schedule schema
+// Schedule schema（planId 关联复盘「下一步计划」的一条，取消关联客户时只清 customerId，保留 planId）
 const scheduleSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
+    planId: { type: String }, // 下一步计划条目的 id，来自 interaction.intelligence.nextSteps[].id
     title: { type: String, required: true },
     date: { type: String, required: true },
     time: { type: String },
