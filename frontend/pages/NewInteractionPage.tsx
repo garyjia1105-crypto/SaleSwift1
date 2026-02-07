@@ -150,6 +150,7 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
   const [reportContent, setReportContent] = useState<string>('');
+  const [reportStyle, setReportStyle] = useState<'brief' | 'detailed'>('detailed');
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [copied, setCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -208,6 +209,7 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
   const finalizeSave = async (result: Interaction, customerId: string) => {
     if (isSaving) return;
     setIsSaving(true);
+    setAnalyzeError('');
     try {
       const saved = await onSave({ ...result, customerId });
       if (saved) {
@@ -217,6 +219,8 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
         setInput('');
         setSelectedFile(null);
         navigate(`/interaction/${saved.id}`);
+      } else {
+        setAnalyzeError(lang === 'zh' ? '保存失败，请重试' : lang === 'en' ? 'Save failed, please retry' : lang === 'ja' ? '保存に失敗しました' : '저장 실패');
       }
     } finally {
       setIsSaving(false);
@@ -284,8 +288,19 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
             reader.readAsDataURL(audioBlob);
             reader.onloadend = async () => {
               try {
-                const result = reader.result as string;
-                const base64data = result.split(',')[1];
+                const result = reader.result as string | null;
+                if (!result || typeof result !== 'string') {
+                  setIsTranscribing(false);
+                  setRecording(false);
+                  return;
+                }
+                const base64data = result.includes(',') ? result.split(',')[1] : undefined;
+                if (!base64data) {
+                  alert('录音数据格式错误，请重新录音');
+                  setIsTranscribing(false);
+                  setRecording(false);
+                  return;
+                }
                 const detectedMimeType = result.match(/data:([^;]+)/)?.[1] || mimeType;
                 const transcribedText = await transcribeAudio(base64data, detectedMimeType);
                 if (transcribedText?.trim()) {
@@ -397,7 +412,8 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
     });
 
     if (filteredInteractions.length === 0) {
-      setReportContent(`## ${tHistory.report}\n\n${tHistory.date_range}: ${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}\n\n${lang === 'zh' ? '该时间段内暂无复盘记录。' : lang === 'en' ? 'No review records in this time period.' : lang === 'ja' ? 'この期間に復盤記録がありません。' : '이 기간에 리뷰 기록이 없습니다.'}`);
+      const noRecords = lang === 'zh' ? '该时间段内暂无复盘记录。' : lang === 'en' ? 'No review records in this time period.' : lang === 'ja' ? 'この期間に復盤記録がありません。' : '이 기간에 리뷰 기록이 없습니다.';
+      setReportContent(`${tHistory.report}\n\n${tHistory.date_range}: ${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}\n\n${noRecords}`);
       return;
     }
 
@@ -408,11 +424,13 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
         startDate,
         endDate,
         locale: lang === 'zh' ? 'zh-CN' : lang === 'en' ? 'en-US' : lang === 'ja' ? 'ja-JP' : 'ko-KR',
+        style: reportStyle,
       });
       setReportContent(result.report || '');
     } catch (error) {
       console.error('生成汇报失败:', error);
-      setReportContent(`## ${tHistory.report}\n\n${lang === 'zh' ? '生成汇报时出错，请稍后重试。' : lang === 'en' ? 'Error generating report, please try again later.' : lang === 'ja' ? 'レポート生成中にエラーが発生しました。後でもう一度お試しください。' : '리포트 생성 중 오류가 발생했습니다. 나중에 다시 시도하세요.'}`);
+      const errMsg = lang === 'zh' ? '生成汇报时出错，请稍后重试。' : lang === 'en' ? 'Error generating report, please try again later.' : lang === 'ja' ? 'レポート生成中にエラーが発生しました。後でもう一度お試しください。' : '리포트 생성 중 오류가 발생했습니다. 나중에 다시 시도하세요.';
+      setReportContent(`${tHistory.report}\n\n${errMsg}`);
     } finally {
       setIsGeneratingReport(false);
     }
@@ -677,8 +695,11 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
           const file = e.target.files?.[0];
           if (file) {
             const reader = new FileReader();
-            reader.onloadend = () =>
-              setSelectedFile({ file, base64: (reader.result as string).split(',')[1] });
+            reader.onloadend = () => {
+              const result = reader.result as string | null;
+              const base64 = result && result.includes(',') ? result.split(',')[1] : undefined;
+              if (base64) setSelectedFile({ file, base64 });
+            };
             reader.readAsDataURL(file);
           }
         }}
@@ -696,7 +717,7 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
                       key={c.id}
                       type="button"
                       disabled={isSaving}
-                      onClick={() => void finalizeSave(pendingResult!, c.id)}
+                      onClick={() => { if (pendingResult) void finalizeSave(pendingResult, c.id); }}
                       className="w-full p-3 bg-gray-50 rounded-xl flex justify-between items-center text-left active:bg-blue-50 disabled:opacity-50"
                     >
                       <div>
@@ -730,7 +751,7 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();
-                  if (isSaving) return;
+                  if (isSaving || !pendingResult) return;
                   setIsSaving(true);
                   try {
                     const c = await onAddCustomer({
@@ -741,7 +762,7 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
                       tags: [],
                       createdAt: new Date().toISOString()
                     } as Customer);
-                    await finalizeSave(pendingResult!, c.id);
+                    await finalizeSave(pendingResult, c.id);
                   } finally {
                     setIsSaving(false);
                   }
@@ -790,6 +811,7 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
               setDateRangeType('today');
               setCustomStartDate('');
               setCustomEndDate('');
+              setReportStyle('detailed');
             }}
           />
           <div className="fixed inset-0 z-[70] flex items-center justify-center px-4 pb-20 pointer-events-none">
@@ -804,6 +826,7 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
                     setDateRangeType('today');
                     setCustomStartDate('');
                     setCustomEndDate('');
+                    setReportStyle('detailed');
                   }}
                   className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
                 >
@@ -854,6 +877,38 @@ const NewInteractionPage: React.FC<Props> = ({ onSave, customers, interactions, 
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* 汇报风格：简短 / 详细 */}
+                <div>
+                  <label className="text-xs font-bold text-gray-700 mb-2 block">
+                    {lang === 'zh' ? '汇报风格' : lang === 'en' ? 'Report style' : lang === 'ja' ? 'レポート形式' : '리포트 형식'}
+                  </label>
+                  <div className="flex gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="reportStyle"
+                        checked={reportStyle === 'brief'}
+                        onChange={() => setReportStyle('brief')}
+                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className="text-xs font-medium text-gray-700">{tHistory.report_style_brief}</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="reportStyle"
+                        checked={reportStyle === 'detailed'}
+                        onChange={() => setReportStyle('detailed')}
+                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className="text-xs font-medium text-gray-700">{tHistory.report_style_detailed}</span>
+                    </label>
+                  </div>
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    {lang === 'zh' ? '简短：2～3 句话汇总；详细：完整结构化汇报。输出均为纯文本。' : lang === 'en' ? 'Brief: 2–3 sentences; Detailed: full structured report. Output is plain text.' : lang === 'ja' ? '簡潔：2～3文で要約。詳細：完全な構造化レポート。いずれもテキスト出力。' : '간단: 2~3문장 요약. 상세: 전체 구조화 리포트. 모두 텍스트로 출력.'}
+                  </p>
                 </div>
 
                 {/* 生成按钮 */}

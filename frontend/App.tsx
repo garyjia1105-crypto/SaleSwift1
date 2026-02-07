@@ -70,6 +70,8 @@ const App: React.FC = () => {
   const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem('custom_api_key') || '');
   const [aiModel, setAiModel] = useState<string>(() => localStorage.getItem('custom_ai_model') || 'gemini-3-flash-preview');
   const [dataLoading, setDataLoading] = useState(false);
+  const [dataLoadError, setDataLoadError] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -79,7 +81,16 @@ const App: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const t = translations[language] ?? translations.zh;
-  const isInitialLoadRef = useRef(true); // 跟踪是否是首次加载用户数据
+  const isInitialLoadRef = useRef(true);
+  const common = (t as { common?: { save_failed?: string; delete_failed?: string } }).common;
+  const toastSaveFailed = () => setApiError(common?.save_failed ?? '保存失败，请重试');
+  const toastDeleteFailed = () => setApiError(common?.delete_failed ?? '删除失败，请重试');
+
+  useEffect(() => {
+    if (!apiError) return;
+    const t = setTimeout(() => setApiError(null), 3000);
+    return () => clearTimeout(t);
+  }, [apiError]);
 
   useEffect(() => {
     localStorage.setItem('language', language);
@@ -114,8 +125,8 @@ const App: React.FC = () => {
     localStorage.setItem('custom_ai_model', aiModel);
   }, [aiModel]);
 
-  useEffect(() => {
-    if (!isLoggedIn) return;
+  const loadInitialData = () => {
+    setDataLoadError(null);
     setDataLoading(true);
     Promise.all([
       api.users.getMe(),
@@ -128,7 +139,6 @@ const App: React.FC = () => {
         setUser({ email: me.email, displayName: me.displayName ?? me.email.split('@')[0] });
         if (me.avatar) setAvatar(me.avatar);
         
-        // 从数据库加载用户的主题和语言设置
         let themeUpdated = false;
         let languageUpdated = false;
         
@@ -141,7 +151,6 @@ const App: React.FC = () => {
           languageUpdated = true;
         }
         
-        // 如果数据库中没有设置，但 localStorage 中有，则保存到数据库
         if (!themeUpdated && (me.theme === null || me.theme === undefined)) {
           const localTheme = localStorage.getItem('theme');
           if (localTheme && VALID_THEMES.includes(localTheme as Theme)) {
@@ -155,7 +164,6 @@ const App: React.FC = () => {
           }
         }
         
-        // 标记首次加载完成
         isInitialLoadRef.current = false;
         
         setInteractions(ints as Interaction[]);
@@ -167,9 +175,16 @@ const App: React.FC = () => {
         if (err?.message?.includes('Unauthorized') || err?.message?.includes('401')) {
           setToken(null);
           setIsLoggedIn(false);
+        } else {
+          setDataLoadError(err instanceof Error ? err.message : '加载失败，请稍后重试');
         }
       })
       .finally(() => setDataLoading(false));
+  };
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    loadInitialData();
   }, [isLoggedIn]);
 
   const handleLogin = () => {
@@ -222,6 +237,7 @@ const App: React.FC = () => {
       setCustomers((prev) => [created as Customer, ...prev]);
       return created as Customer;
     } catch {
+      toastSaveFailed();
       return customer;
     }
   };
@@ -238,7 +254,9 @@ const App: React.FC = () => {
         tags: updatedCustomer.tags,
       });
       setCustomers((prev) => prev.map((c) => (c.id === updated.id ? (updated as Customer) : c)));
-    } catch {}
+    } catch {
+      toastSaveFailed();
+    }
   };
 
   const addSchedule = async (schedule: Schedule) => {
@@ -252,7 +270,9 @@ const App: React.FC = () => {
         status: schedule.status,
       });
       setSchedules((prev) => [created as Schedule, ...prev]);
-    } catch {}
+    } catch {
+      toastSaveFailed();
+    }
   };
 
   const toggleScheduleStatus = async (id: string) => {
@@ -262,28 +282,36 @@ const App: React.FC = () => {
     try {
       const updated = await api.schedules.update(id, { status: nextStatus });
       setSchedules((prev) => prev.map((x) => (x.id === id ? (updated as Schedule) : x)));
-    } catch {}
+    } catch {
+      toastSaveFailed();
+    }
   };
 
   const updateSchedule = async (id: string, updates: Partial<Schedule>) => {
     try {
       const updated = await api.schedules.update(id, updates);
       setSchedules((prev) => prev.map((x) => (x.id === id ? (updated as Schedule) : x)));
-    } catch {}
+    } catch {
+      toastSaveFailed();
+    }
   };
 
   const deleteInteraction = async (id: string) => {
     try {
       await api.interactions.delete(id);
       setInteractions((prev) => prev.filter((x) => x.id !== id));
-    } catch {}
+    } catch {
+      toastDeleteFailed();
+    }
   };
 
   const deleteSchedule = async (id: string) => {
     try {
       await api.schedules.delete(id);
       setSchedules((prev) => prev.filter((x) => x.id !== id));
-    } catch {}
+    } catch {
+      toastDeleteFailed();
+    }
   };
 
   const deleteCustomer = async (id: string) => {
@@ -293,7 +321,9 @@ const App: React.FC = () => {
       setInteractions((prev) => prev.filter((i) => i.customerId !== id));
       setSchedules((prev) => prev.filter((s) => s.customerId !== id));
       setCoursePlans((prev) => prev.filter((p) => p.customerId !== id));
-    } catch {}
+    } catch {
+      toastDeleteFailed();
+    }
   };
 
   const saveCoursePlan = async (plan: CoursePlan) => {
@@ -306,7 +336,9 @@ const App: React.FC = () => {
         resources: plan.resources,
       });
       setCoursePlans((prev) => [created as CoursePlan, ...prev.filter((p) => p.customerId !== plan.customerId)]);
-    } catch {}
+    } catch {
+      toastSaveFailed();
+    }
   };
 
   const isActive = (path: string) => location.pathname === path;
@@ -323,7 +355,7 @@ const App: React.FC = () => {
     return <LoginPage onLogin={handleLogin} language={language} setLanguage={setLanguage} />;
   }
 
-  if (isLoggedIn && dataLoading) {
+  if (isLoggedIn && dataLoading && !dataLoadError) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -334,12 +366,34 @@ const App: React.FC = () => {
     );
   }
 
+  if (isLoggedIn && dataLoadError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
+        <div className="text-center max-w-sm">
+          <p className="text-sm font-medium text-gray-700 mb-2">数据加载失败</p>
+          <p className="text-xs text-gray-500 mb-4">{dataLoadError}</p>
+          <button
+            type="button"
+            onClick={loadInitialData}
+            className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700"
+          >
+            重试
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ThemeProvider theme={theme}>
       <div className={`flex flex-col min-h-screen items-center justify-center transition-colors duration-500 ${themeStyles.bg}`}>
         {/* transform 使内部 fixed 元素相对于本卡片定位，底部栏宽度/位置与卡片一致 */}
   <div className={`w-full max-w-[480px] h-screen md:h-[90vh] md:max-h-[850px] overflow-hidden flex flex-col relative md:rounded-[32px] md:shadow-2xl border ${themeStyles.border} ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-white'} [transform:translateZ(0)]`}>
-          
+          {apiError && (
+            <div className="absolute top-3 left-4 right-4 z-50 py-2 px-3 bg-amber-500 text-white rounded-lg text-center text-sm font-medium shadow-lg animate-in fade-in duration-200">
+              {apiError}
+            </div>
+          )}
           {isLoggedIn && (
           <header className={`px-5 py-3.5 flex items-center justify-between border-b ${themeStyles.border} ${themeStyles.headerBg} shrink-0 z-10`}>
             <Link to="/" className="flex items-center gap-1.5">

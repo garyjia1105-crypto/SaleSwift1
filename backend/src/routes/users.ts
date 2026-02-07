@@ -12,7 +12,7 @@ usersRouter.get('/me', async (req: any, res) => {
     return res.json({
       id: user._id.toString(),
       email: user.email,
-      displayName: user.displayName ?? user.email.split('@')[0],
+      displayName: user.displayName ?? (user.email ? user.email.split('@')[0] : 'User'),
       avatar: user.avatar ?? null,
       language: user.language ?? null,
       theme: user.theme ?? null,
@@ -36,7 +36,7 @@ usersRouter.patch('/me', async (req: any, res) => {
     return res.json({
       id: user._id.toString(),
       email: user.email,
-      displayName: user.displayName ?? user.email.split('@')[0],
+      displayName: user.displayName ?? (user.email ? user.email.split('@')[0] : 'User'),
       avatar: user.avatar ?? null,
       language: user.language ?? null,
       theme: user.theme ?? null,

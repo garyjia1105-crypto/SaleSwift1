@@ -39,6 +39,7 @@ const RolePlayPage: React.FC<Props> = ({ customers, interactions, lang }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evaluation, setEvaluation] = useState<RolePlayEvaluation | null>(null);
+  const [initError, setInitError] = useState<string>('');
 
   // 语音相关状态
   const [recording, setRecording] = useState(false);
@@ -51,15 +52,20 @@ const RolePlayPage: React.FC<Props> = ({ customers, interactions, lang }) => {
   const customer = customers.find(c => c.id === customerId);
   const customerContext = interactions
     .filter(i => i.customerId === customerId)
-    .map(i => i.customerProfile.summary)
+    .map(i => i.customerProfile?.summary ?? '')
+    .filter(Boolean)
     .join('\n');
 
   useEffect(() => {
     if (customer) {
+      setInitError('');
       setIsTyping(true);
       rolePlayInit(customer, customerContext)
         .then((text) => setMessages(text ? [{ role: 'model', text }] : []))
-        .catch((e) => { if (DEV) console.error(e); })
+        .catch((e) => {
+          if (DEV) console.error(e);
+          setInitError(e instanceof Error ? e.message : 'AI 对话初始化失败，请检查网络或 API 配置后重试');
+        })
         .finally(() => setIsTyping(false));
     }
   }, [customer?.id]);
@@ -72,12 +78,14 @@ const RolePlayPage: React.FC<Props> = ({ customers, interactions, lang }) => {
 
   const initChat = async () => {
     if (!customer) return;
+    setInitError('');
     setIsTyping(true);
     try {
       const text = await rolePlayInit(customer, customerContext);
       setMessages(text ? [{ role: 'model', text }] : []);
     } catch (err) {
       if (DEV) console.error(err);
+      setInitError(err instanceof Error ? err.message : 'AI 对话初始化失败，请检查网络或 API 配置后重试');
     } finally {
       setIsTyping(false);
     }
@@ -395,6 +403,15 @@ const RolePlayPage: React.FC<Props> = ({ customers, interactions, lang }) => {
         <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-amber-500"></div>
         
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 space-y-6">
+          {initError && (
+            <div className="flex flex-col items-center gap-2 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">
+              <AlertCircle size={18} />
+              <span>{initError}</span>
+              <button type="button" onClick={initChat} className="px-4 py-2 bg-amber-100 hover:bg-amber-200 rounded-lg text-xs font-bold">
+                重试
+              </button>
+            </div>
+          )}
           {messages.map((msg, idx) => (
             <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2`}>
               <div className={`flex gap-3 max-w-[80%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>

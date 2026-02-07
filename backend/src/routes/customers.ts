@@ -67,6 +67,9 @@ customersRouter.post('/', async (req: any, res) => {
 
 customersRouter.get('/:id', async (req: any, res) => {
   try {
+    if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid id' });
+    }
     const doc = await Customer.findOne({
       _id: req.params.id,
       userId: req.user.id,
@@ -81,6 +84,9 @@ customersRouter.get('/:id', async (req: any, res) => {
 
 customersRouter.patch('/:id', async (req: any, res) => {
   try {
+    if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid id' });
+    }
     const doc = await Customer.findOne({
       _id: req.params.id,
       userId: req.user.id,
@@ -104,6 +110,9 @@ customersRouter.patch('/:id', async (req: any, res) => {
 
 customersRouter.delete('/:id', async (req: any, res) => {
   try {
+    if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid id' });
+    }
     const doc = await Customer.findOneAndDelete({
       _id: req.params.id,
       userId: req.user.id,

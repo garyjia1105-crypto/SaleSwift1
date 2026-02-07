@@ -13,6 +13,15 @@ const getModel = (prefer: 'flash' | 'pro' = 'flash') => {
   return prefer === 'pro' ? 'gemini-2.0-flash' : 'gemini-2.0-flash';
 };
 
+function safeParseJson<T>(text: string | undefined, defaultValue: T): T {
+  try {
+    const raw = text?.trim() || '{}';
+    return JSON.parse(raw) as T;
+  } catch {
+    return defaultValue;
+  }
+}
+
 const EVALUATION_SCHEMA = {
   type: Type.OBJECT,
   properties: {
@@ -44,34 +53,54 @@ const EVALUATION_SCHEMA = {
   required: ['score', 'strengths', 'improvements', 'dimensions'],
 };
 
-const ROLE_PLAY_SYSTEM = (customer: { name: string; role: string; company: string }) => `
-你现在扮演客户：${customer.name}，职位是 ${customer.role}，在 ${customer.company} 工作。
-性格特征：资深、理性、时间观念极强、注重实际价值。
+const ROLE_PLAY_SYSTEM = (
+  customer: { name: string; role: string; company: string; tags?: string[] },
+  context: string
+) => {
+  const role = customer.role || '决策者';
+  const company = customer.company || '某公司';
+  const tagsHint = customer.tags?.length
+    ? `\n客户标签/行业相关：${customer.tags.join('、')}。你提出的顾虑、需求、情境必须与上述身份和行业相符。`
+    : '';
+  const contextBlock = context.trim()
+    ? `\n【已知客户背景摘要】\n${context.trim()}\n请结合以上背景来回应，使对话贴合该客户的真实情境。`
+    : '';
+  return `
+你现在扮演客户：${customer.name}，职位是 ${role}，在 ${company} 工作。${tagsHint}
+性格特征：资深、理性、时间观念极强、注重实际价值。${contextBlock}
 
 重要规则：
-1. **根据销售的具体内容回复**：仔细阅读销售说的话，针对性地回应，不要使用模板化回复。
-2. **真实自然的对话**：像真实客户一样，根据销售提出的具体问题、方案或建议给出回应。
-3. **拒绝敷衍**：如果销售回复过于简短（少于10个字）或缺乏专业性，表现出不悦或困惑。
-4. **真实反馈**：模拟真实的商业阻力，提出合理的疑问和顾虑。
-5. **引导深度对话**：通过追问来测试销售的需求挖掘能力。
+1. **紧扣当前客户身份**：你提出的问题、顾虑、情境必须符合该客户的职位、公司和行业，不要提出与身份无关或过于离谱的问题（例如与所在行业完全无关的假设、脱离实际的刁难）。
+2. **根据销售的具体内容回复**：仔细阅读销售说的话，针对性地回应，不要使用模板化回复。
+3. **真实自然的对话**：像真实客户一样，根据销售提出的具体问题、方案或建议给出回应。
+4. **拒绝敷衍**：如果销售回复过于简短（少于10个字）或缺乏专业性，表现出不悦或困惑。
+5. **真实反馈**：模拟该身份下合理的商业阻力与疑问，避免夸张或脱离行业的设定。
+6. **引导深度对话**：通过追问来测试销售的需求挖掘能力，但追问内容需符合本客户身份与业务场景。
 
 禁止行为：
 - 不要重复相同的回复
 - 不要使用"visit tencent manager"这样的固定回复
 - 不要忽略销售的具体内容
 - 每次回复都要基于销售刚才说的话
+- 不要提出与客户身份、行业明显不符或过于离谱的情境与问题
 
-请根据销售的具体发言，给出自然、真实、有针对性的客户回复。
+请根据销售的具体发言，结合当前客户身份，给出自然、真实、有针对性的客户回复。
 `;
+};
 
 export async function rolePlayInit(customer: {
   name: string;
-  role: string;
+  role?: string;
   company: string;
+  tags?: string[];
 }, context: string, customApiKey?: string): Promise<string> {
   const ai = getAI(customApiKey);
   const model = getModel('flash');
-  const systemInstruction = ROLE_PLAY_SYSTEM(customer) + '\n开始时请主动发起一段话，说明你现在的状态。';
+  const systemInstruction =
+    ROLE_PLAY_SYSTEM(
+      { name: customer.name, role: customer.role || '决策者', company: customer.company, tags: customer.tags },
+      context
+    ) + '\n开始时请主动发起一段话，说明你现在的状态（需结合你的身份与工作场景，不要脱离实际）。';
   const response = await ai.models.generateContent({
     model,
     contents: '请作为客户开始这段对话。',
@@ -81,15 +110,18 @@ export async function rolePlayInit(customer: {
 }
 
 export async function rolePlayMessage(
-  customer: { name: string; role: string; company: string },
-  _context: string,
+  customer: { name: string; role?: string; company: string; tags?: string[] },
+  context: string,
   history: { role: string; text: string }[],
   message: string,
   customApiKey?: string
 ): Promise<string> {
   const ai = getAI(customApiKey);
   const model = getModel('flash');
-  const systemInstruction = ROLE_PLAY_SYSTEM(customer);
+  const systemInstruction = ROLE_PLAY_SYSTEM(
+    { name: customer.name, role: customer.role || '决策者', company: customer.company, tags: customer.tags },
+    context
+  );
   
   // 构建对话历史，确保格式清晰
   const conversationParts: string[] = [];
@@ -213,7 +245,7 @@ export async function generateCoursePlan(
       },
     },
   });
-  return JSON.parse(response.text || '{}');
+  return safeParseJson(response.text, {} as Record<string, unknown>);
 }
 
 export async function transcribeAudio(base64Data: string, mimeType: string, customApiKey?: string): Promise<string> {
@@ -241,7 +273,14 @@ export async function evaluateRolePlay(history: { role: string; text: string }[]
     contents: prompt,
     config: { responseMimeType: 'application/json', responseSchema: EVALUATION_SCHEMA },
   });
-  return JSON.parse(response.text || '{}');
+  const defaultEval = {
+    score: 0,
+    strengths: [] as string[],
+    improvements: [] as string[],
+    suggestedScripts: [] as { situation: string; original: string; better: string }[],
+    dimensions: { professionalism: 0, empathy: 0, probing: 0, closing: 0, handlingObjections: 0 },
+  };
+  return safeParseJson(response.text, defaultEval) as Record<string, unknown>;
 }
 
 const LOCALE_TO_LANG: Record<string, string> = {
@@ -318,7 +357,13 @@ export async function analyzeSalesInteraction(
       },
     },
   });
-  return JSON.parse(response.text || '{}');
+  const defaultAnalysis = {
+    customerProfile: { name: '', company: '', role: '', industry: '', summary: '' },
+    intelligence: { painPoints: [] as string[], keyInterests: [] as string[], currentStage: '', probability: 0, nextSteps: [] as { action: string; priority: string; dueDate: string }[] },
+    metrics: { talkRatio: 0, questionRate: 0, sentiment: '', confidenceScore: 0 },
+    suggestions: [] as string[],
+  };
+  return safeParseJson(response.text, defaultAnalysis) as Record<string, unknown>;
 }
 
 export async function parseScheduleVoice(text: string, customApiKey?: string): Promise<Record<string, unknown>> {
@@ -344,7 +389,7 @@ export async function parseScheduleVoice(text: string, customApiKey?: string): P
       },
     },
   });
-  return JSON.parse(response.text || '{}');
+  return safeParseJson(response.text, {} as Record<string, unknown>);
 }
 
 export async function extractSearchKeywords(text: string, customApiKey?: string): Promise<string> {
@@ -367,17 +412,19 @@ export async function generateReport(
   startDate: string,
   endDate: string,
   locale?: string,
-  customApiKey?: string
+  customApiKey?: string,
+  style: 'brief' | 'detailed' = 'detailed'
 ): Promise<string> {
   const ai = getAI(customApiKey);
   const model = getModel('pro');
   const outputLang = locale && LOCALE_TO_LANG[locale] ? LOCALE_TO_LANG[locale] : '简体中文';
-  
+  const emptyMsg = outputLang === '简体中文' ? '汇报' : outputLang === 'English' ? 'Report' : outputLang === '日本語' ? 'レポート' : '리포트';
+  const noRecords = outputLang === '简体中文' ? '该时间段内暂无复盘记录。' : outputLang === 'English' ? 'No review records in this time period.' : outputLang === '日本語' ? 'この期間に復盤記録がありません。' : '이 기간에 리뷰 기록이 없습니다.';
+
   if (interactions.length === 0) {
-    return `## ${outputLang === '简体中文' ? '汇报' : outputLang === 'English' ? 'Report' : outputLang === '日本語' ? 'レポート' : '리포트'}\n\n时间段：${startDate} 至 ${endDate}\n\n该时间段内暂无复盘记录。`;
+    return `${emptyMsg}\n\n${startDate} 至 ${endDate}\n\n${noRecords}`;
   }
 
-  // 统计数据
   const count = interactions.length;
   const customers = Array.from(new Set(interactions.map(i => i.customerProfile.name))).slice(0, 10);
   const stages = interactions.reduce((acc, i) => {
@@ -392,9 +439,7 @@ export async function generateReport(
   }, {} as Record<string, number>);
   const avgProbability = interactions.reduce((sum, i) => sum + (i.intelligence?.probability || 0), 0) / count;
 
-  const prompt = `请基于以下时间段内的复盘记录生成一份销售汇报。**重要：所有输出内容必须全部使用${outputLang}。**
-
-时间段：${startDate} 至 ${endDate}
+  const dataBlock = `时间段：${startDate} 至 ${endDate}
 复盘数量：${count}
 关键客户：${customers.join('、')}
 销售阶段分布：${Object.entries(stages).map(([k, v]) => `${k}(${v})`).join('、')}
@@ -411,9 +456,24 @@ ${idx + 1}. ${i.customerProfile.name} (@ ${i.customerProfile.company})
    摘要：${i.customerProfile.summary}
    痛点：${i.intelligence?.painPoints?.join('、') || '无'}
    兴趣：${i.intelligence?.keyInterests?.join('、') || '无'}
-`).join('\n')}
+`).join('\n')}`;
 
-请生成一份结构化的汇报，使用 Markdown 格式，包含：
+  const langRule = `**重要：所有输出内容必须全部使用${outputLang}。**`;
+  const noMarkdownRule = '**禁止使用 Markdown 格式（不要 #、**、列表符号等），只输出纯文本。**';
+
+  let prompt: string;
+  if (style === 'brief') {
+    prompt = `请基于以下时间段内的复盘记录，用 2～3 句话做简短汇总。${langRule} ${noMarkdownRule}
+
+${dataBlock}
+
+请直接输出 2～3 句纯文本汇总，不要标题、不要分点、不要 Markdown。`;
+  } else {
+    prompt = `请基于以下时间段内的复盘记录生成一份销售汇报。${langRule} ${noMarkdownRule}
+
+${dataBlock}
+
+请生成一份结构化的汇报，纯文本格式（不要用 Markdown），包含：
 1. 时间段概述
 2. 关键数据统计
 3. 主要客户和商机
@@ -421,7 +481,8 @@ ${idx + 1}. ${i.customerProfile.name} (@ ${i.customerProfile.company})
 5. 情绪趋势
 6. 核心洞察和建议
 
-汇报应该专业、清晰、有洞察力。`;
+用自然段或换行分隔即可，不要 #、*、- 等 Markdown 符号。汇报应该专业、清晰、有洞察力。`;
+  }
 
   const response = await ai.models.generateContent({
     model,
@@ -431,7 +492,7 @@ ${idx + 1}. ${i.customerProfile.name} (@ ${i.customerProfile.company})
     },
   });
 
-  return response.text?.trim() || `## ${outputLang === '简体中文' ? '汇报生成失败' : 'Report generation failed'}`;
+  return response.text?.trim() || (outputLang === '简体中文' ? '汇报生成失败' : 'Report generation failed');
 }
 
 export async function parseCustomerVoiceInput(text: string, customApiKey?: string): Promise<Record<string, unknown>> {
@@ -455,5 +516,5 @@ export async function parseCustomerVoiceInput(text: string, customApiKey?: strin
       },
     },
   });
-  return JSON.parse(response.text || '{}');
+  return safeParseJson(response.text, { name: '', company: '', role: '', industry: '' } as Record<string, unknown>);
 }

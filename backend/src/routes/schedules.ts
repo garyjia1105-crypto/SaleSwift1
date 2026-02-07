@@ -23,7 +23,7 @@ schedulesRouter.get('/', async (req: any, res) => {
   try {
     const customerId = req.query.customerId as string | undefined;
     const filter: any = { userId: req.user.id };
-    if (customerId) filter.customerId = customerId;
+    if (customerId && mongoose.Types.ObjectId.isValid(customerId)) filter.customerId = customerId;
     let list = await Schedule.find(filter).lean();
     list = list.sort((a: any, b: any) => {
       const da = new Date(`${a.date} ${a.time || '00:00'}`).getTime();
@@ -43,9 +43,10 @@ schedulesRouter.post('/', async (req: any, res) => {
     if (!title || !date) {
       return res.status(400).json({ error: 'Title and date required' });
     }
+    const validCustomerId = customerId && mongoose.Types.ObjectId.isValid(customerId) ? customerId : null;
     const schedule = await Schedule.create({
       userId: req.user.id,
-      customerId: customerId || null,
+      customerId: validCustomerId,
       title,
       date,
       time: time ?? null,
@@ -61,13 +62,16 @@ schedulesRouter.post('/', async (req: any, res) => {
 
 schedulesRouter.patch('/:id', async (req: any, res) => {
   try {
+    if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid id' });
+    }
     const doc = await Schedule.findOne({
       _id: req.params.id,
       userId: req.user.id,
     });
     if (!doc) return res.status(404).json({ error: 'Schedule not found' });
     const { customerId, title, date, time, description, status } = req.body;
-    if (customerId !== undefined) doc.customerId = customerId || null;
+    if (customerId !== undefined) doc.customerId = customerId && mongoose.Types.ObjectId.isValid(customerId) ? customerId : null;
     if (title !== undefined) doc.title = title;
     if (date !== undefined) doc.date = date;
     if (time !== undefined) doc.time = time;
@@ -83,6 +87,9 @@ schedulesRouter.patch('/:id', async (req: any, res) => {
 
 schedulesRouter.delete('/:id', async (req: any, res) => {
   try {
+    if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid id' });
+    }
     const doc = await Schedule.findOneAndDelete({
       _id: req.params.id,
       userId: req.user.id,

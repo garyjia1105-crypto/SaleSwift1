@@ -15,7 +15,6 @@ import {
   Plus,
   Target,
   Edit2,
-  Check,
   BookOpen,
   Sparkles,
   Loader2,
@@ -210,46 +209,20 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
               )}
             </div>
           </div>
-          <button 
-            onClick={() => {
-              if (isEditingContact) {
-                handleSaveContact();
-              } else {
+          {!isEditingContact && (
+            <button 
+              onClick={() => {
                 setEditForm({ name: customer.name, email: customer.email || '', phone: customer.phone || '', company: customer.company || '', role: customer.role || '' });
                 setIsEditingContact(true);
-              }
-            }}
-            className={`p-1.5 rounded-lg transition-all ${isEditingContact ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-50 text-gray-400'}`}
-          >
-            {isEditingContact ? <Check size={14} /> : <Edit2 size={14} />}
-          </button>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-1 p-2 bg-gray-50/50 rounded-xl border border-gray-50 mb-4">
-          <Tags size={10} className="text-gray-300 mx-1 shrink-0" />
-          {customer.tags.map(tag => (
-            <span key={tag} className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[8px] font-bold ${
-              theme === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-              theme === 'orange' ? 'bg-orange-50 text-orange-600 border border-orange-200' :
-              theme === 'nature' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' :
-              'bg-blue-50 text-blue-600 border border-blue-200'
-            }`}>
-              {tag} <button onClick={() => onUpdateCustomer({...customer, tags: customer.tags.filter(t=>t!==tag)})} className="text-gray-300 hover:text-red-500"><X size={8} /></button>
-            </span>
-          ))}
-          {showTagInput ? (
-            <input autoFocus className={`px-1.5 py-0.5 text-[8px] border rounded-md outline-none bg-white w-14 ${
-              theme === 'dark' ? 'border-blue-500/30' :
-              theme === 'orange' ? 'border-orange-200' :
-              theme === 'nature' ? 'border-emerald-200' :
-              'border-blue-200'
-            }`} onKeyDown={(e)=>{if(e.key==='Enter' && newTagText.trim()){onUpdateCustomer({...customer, tags: [...new Set([...customer.tags, newTagText.trim()])]}); setNewTagText(''); setShowTagInput(false);}}} value={newTagText} onChange={e=>setNewTagText(e.target.value)} onBlur={()=>{if(newTagText.trim()){onUpdateCustomer({...customer, tags: [...new Set([...customer.tags, newTagText.trim()])]}); setNewTagText('');} setShowTagInput(false);}} />
-          ) : (
-            <button onClick={()=>setShowTagInput(true)} className="flex items-center gap-1 px-1.5 py-0.5 border border-dashed border-gray-200 text-gray-400 rounded-md text-[8px] font-bold btn-active-scale"><Plus size={8} /> {t.tags_label}</button>
+              }}
+              className="p-1.5 rounded-lg transition-all bg-gray-50 text-gray-400 hover:bg-gray-100"
+            >
+              <Edit2 size={14} />
+            </button>
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-2 border-t border-gray-50 pt-3">
+        <div className="grid grid-cols-1 gap-2 border-t border-gray-50 pt-3 mb-4">
           {isEditingContact ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -290,6 +263,30 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
               <div className="flex items-center gap-1.5 text-gray-400 overflow-hidden"><Mail size={10} /><span className="text-[9px] truncate">{customer.email || 'N/A'}</span></div>
               <div className="flex items-center gap-1.5 text-gray-400 overflow-hidden"><Phone size={10} /><span className="text-[9px] truncate">{customer.phone || 'N/A'}</span></div>
             </div>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1 p-2 bg-gray-50/50 rounded-xl border border-gray-50">
+          <Tags size={10} className="text-gray-300 mx-1 shrink-0" />
+          {customer.tags.map(tag => (
+            <span key={tag} className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[8px] font-bold ${
+              theme === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+              theme === 'orange' ? 'bg-orange-50 text-orange-600 border border-orange-200' :
+              theme === 'nature' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' :
+              'bg-blue-50 text-blue-600 border border-blue-200'
+            }`}>
+              {tag} <button onClick={() => onUpdateCustomer({...customer, tags: customer.tags.filter(t=>t!==tag)})} className="text-gray-300 hover:text-red-500"><X size={8} /></button>
+            </span>
+          ))}
+          {showTagInput ? (
+            <input autoFocus className={`px-1.5 py-0.5 text-[8px] border rounded-md outline-none bg-white w-14 ${
+              theme === 'dark' ? 'border-blue-500/30' :
+              theme === 'orange' ? 'border-orange-200' :
+              theme === 'nature' ? 'border-emerald-200' :
+              'border-blue-200'
+            }`} onKeyDown={(e)=>{if(e.key==='Enter' && newTagText.trim()){onUpdateCustomer({...customer, tags: [...new Set([...customer.tags, newTagText.trim()])]}); setNewTagText(''); setShowTagInput(false);}}} value={newTagText} onChange={e=>setNewTagText(e.target.value)} onBlur={()=>{if(newTagText.trim()){onUpdateCustomer({...customer, tags: [...new Set([...customer.tags, newTagText.trim()])]}); setNewTagText('');} setShowTagInput(false);}} />
+          ) : (
+            <button onClick={()=>setShowTagInput(true)} className="flex items-center gap-1 px-1.5 py-0.5 border border-dashed border-gray-200 text-gray-400 rounded-md text-[8px] font-bold btn-active-scale"><Plus size={8} /> {t.tags_label}</button>
           )}
         </div>
       </div>

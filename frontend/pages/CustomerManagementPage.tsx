@@ -64,7 +64,7 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
     return t[stageMap[stage]] as string;
   };
 
-  const customerStageCounts = useMemo(() => {
+  const { customerStageCounts, customerToStage } = useMemo(() => {
     const stageToCount: Record<SalesStage, number> = Object.values(SalesStage).reduce(
       (acc, stage) => ({ ...acc, [stage]: 0 }),
       {} as Record<SalesStage, number>
@@ -72,21 +72,25 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
     const sortedByDate = [...interactions].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
+    const toStage = new Map<string, SalesStage>();
     for (const customer of customers) {
       const latestForCustomer = sortedByDate.find(i => i.customerId === customer.id);
       const stage = latestForCustomer
         ? normalizeStage(latestForCustomer.intelligence?.currentStage as string | undefined)
         : SalesStage.PROSPECTING;
       stageToCount[stage] = (stageToCount[stage] ?? 0) + 1;
+      toStage.set(customer.id, stage);
     }
-    return stageToCount;
+    return { customerStageCounts: stageToCount, customerToStage: toStage };
   }, [customers, interactions]);
   const stageData = Object.values(SalesStage).map(stage => ({
+    stage,
     name: getStageTranslation(stage),
     count: customerStageCounts[stage] ?? 0
   }));
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedStage, setSelectedStage] = useState<SalesStage | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showSearchDialog, setShowSearchDialog] = useState(false);
@@ -118,11 +122,12 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
   };
 
   const filtered = customers.filter(c => {
-    const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          c.company.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          c.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           c.tags.some(t => t.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesTag = selectedTag ? c.tags.includes(selectedTag) : true;
-    return matchesSearch && matchesTag;
+    const matchesStage = selectedStage ? customerToStage.get(c.id) === selectedStage : true;
+    return matchesSearch && matchesTag && matchesStage;
   });
 
   return (
@@ -144,7 +149,17 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 8, fill: '#94a3b8' }} />
                 <YAxis hide domain={[0, 'auto']} />
                 <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', fontSize: '10px' }} formatter={(value: number) => [value, t.customer_count]} />
-                <Bar dataKey="count" radius={[2, 2, 0, 0]} fill={colors.chartBarFill} minPointSize={2} />
+                <Bar
+                  dataKey="count"
+                  radius={[2, 2, 0, 0]}
+                  fill={colors.chartBarFill}
+                  minPointSize={2}
+                  onClick={(_: unknown, index: number) => {
+                    const stage = typeof index === 'number' && stageData[index] ? stageData[index].stage : undefined;
+                    if (stage != null) setSelectedStage(s => (s === stage ? null : stage));
+                  }}
+                  style={{ cursor: 'pointer' }}
+                />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -153,6 +168,33 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
             </div>
           )}
         </div>
+        {customers.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-3 border-t border-gray-50">
+            <button
+              onClick={() => setSelectedStage(null)}
+              className={`px-2.5 py-1 rounded-lg text-[9px] font-bold transition-all border ${
+                selectedStage === null
+                  ? `${colors.button.primary} ${colors.primary.border}`
+                  : 'bg-gray-50 border-gray-100 text-gray-500 hover:bg-gray-100'
+              }`}
+            >
+              {t.filter_all}
+            </button>
+            {Object.values(SalesStage).map(stage => (
+              <button
+                key={stage}
+                onClick={() => setSelectedStage(s => (s === stage ? null : stage))}
+                className={`px-2.5 py-1 rounded-lg text-[9px] font-bold transition-all border whitespace-nowrap ${
+                  selectedStage === stage
+                    ? `${colors.button.primary} ${colors.primary.border}`
+                    : 'bg-gray-50 border-gray-100 text-gray-500 hover:bg-gray-100'
+                }`}
+              >
+                {getStageTranslation(stage)} ({customerStageCounts[stage] ?? 0})
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="space-y-3">

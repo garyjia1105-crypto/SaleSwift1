@@ -97,7 +97,12 @@ const ProfilePage: React.FC<Props> = ({
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => onSetAvatar(reader.result as string);
+      reader.onloadend = () => {
+        const result = reader.result;
+        if (result && typeof result === 'string' && result.startsWith('data:')) {
+          onSetAvatar(result);
+        }
+      };
       reader.readAsDataURL(file);
     }
   };

@@ -144,6 +144,7 @@ const HistoryPage: React.FC<{ interactions: Interaction[]; lang: Language }> = (
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
   const [reportContent, setReportContent] = useState<string>('');
+  const [reportStyle, setReportStyle] = useState<'brief' | 'detailed'>('detailed');
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [copied, setCopied] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -197,10 +198,20 @@ const HistoryPage: React.FC<{ interactions: Interaction[]; lang: Language }> = (
           reader.readAsDataURL(audioBlob);
           reader.onloadend = async () => {
             try {
-              const result = reader.result as string;
-              const base64data = result.split(',')[1];
+              const result = reader.result as string | null;
+              if (!result || typeof result !== 'string') {
+                setIsVoiceProcessing(false);
+                setRecording(false);
+                return;
+              }
+              const base64data = result.includes(',') ? result.split(',')[1] : undefined;
+              if (!base64data) {
+                alert('录音数据格式错误，请重新录音');
+                setIsVoiceProcessing(false);
+                setRecording(false);
+                return;
+              }
               const detectedMimeType = result.match(/data:([^;]+)/)?.[1] || mimeType;
-              
               const transcribedText = await transcribeAudio(base64data, detectedMimeType);
               if (transcribedText && transcribedText.trim()) {
                 const keywords = await extractSearchKeywords(transcribedText.trim());
@@ -329,7 +340,8 @@ const HistoryPage: React.FC<{ interactions: Interaction[]; lang: Language }> = (
     });
 
     if (filteredInteractions.length === 0) {
-      setReportContent(`## ${t.report}\n\n${t.date_range}: ${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}\n\n${lang === 'zh' ? '该时间段内暂无复盘记录。' : lang === 'en' ? 'No review records in this time period.' : lang === 'ja' ? 'この期間に復盤記録がありません。' : '이 기간에 리뷰 기록이 없습니다.'}`);
+      const noRecords = lang === 'zh' ? '该时间段内暂无复盘记录。' : lang === 'en' ? 'No review records in this time period.' : lang === 'ja' ? 'この期間に復盤記録がありません。' : '이 기간에 리뷰 기록이 없습니다.';
+      setReportContent(`${t.report}\n\n${t.date_range}: ${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}\n\n${noRecords}`);
       return;
     }
 
@@ -340,11 +352,13 @@ const HistoryPage: React.FC<{ interactions: Interaction[]; lang: Language }> = (
         startDate,
         endDate,
         locale: lang === 'zh' ? 'zh-CN' : lang === 'en' ? 'en-US' : lang === 'ja' ? 'ja-JP' : 'ko-KR',
+        style: reportStyle,
       });
       setReportContent(result.report || '');
     } catch (err) {
       console.error('生成汇报失败:', err);
-      setReportContent(`## ${t.report}\n\n${lang === 'zh' ? '生成汇报时发生错误：' : lang === 'en' ? 'Error generating report: ' : lang === 'ja' ? 'レポート生成エラー：' : '리포트 생성 오류: '}${(err as Error)?.message || (lang === 'zh' ? '未知错误' : 'Unknown error')}`);
+      const errPrefix = lang === 'zh' ? '生成汇报时发生错误：' : lang === 'en' ? 'Error generating report: ' : lang === 'ja' ? 'レポート生成エラー：' : '리포트 생성 오류: ';
+      setReportContent(`${t.report}\n\n${errPrefix}${(err as Error)?.message || (lang === 'zh' ? '未知错误' : 'Unknown error')}`);
     } finally {
       setIsGeneratingReport(false);
     }
@@ -640,6 +654,7 @@ const HistoryPage: React.FC<{ interactions: Interaction[]; lang: Language }> = (
                     setDateRangeType('today');
                     setCustomStartDate('');
                     setCustomEndDate('');
+                    setReportStyle('detailed');
                   }}
                   className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
                 >
@@ -690,6 +705,38 @@ const HistoryPage: React.FC<{ interactions: Interaction[]; lang: Language }> = (
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* 汇报风格：简短 / 详细 */}
+                <div>
+                  <label className="text-xs font-bold text-gray-700 mb-2 block">
+                    {lang === 'zh' ? '汇报风格' : lang === 'en' ? 'Report style' : lang === 'ja' ? 'レポート形式' : '리포트 형식'}
+                  </label>
+                  <div className="flex gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="reportStyle"
+                        checked={reportStyle === 'brief'}
+                        onChange={() => setReportStyle('brief')}
+                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className="text-xs font-medium text-gray-700">{t.report_style_brief}</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="reportStyle"
+                        checked={reportStyle === 'detailed'}
+                        onChange={() => setReportStyle('detailed')}
+                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className="text-xs font-medium text-gray-700">{t.report_style_detailed}</span>
+                    </label>
+                  </div>
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    {lang === 'zh' ? '简短：2～3 句话汇总；详细：完整结构化汇报。输出均为纯文本。' : lang === 'en' ? 'Brief: 2–3 sentences; Detailed: full structured report. Output is plain text.' : lang === 'ja' ? '簡潔：2～3文で要約。詳細：完全な構造化レポート。いずれもテキスト出力。' : '간단: 2~3문장 요약. 상세: 전체 구조화 리포트. 모두 텍스트로 출력.'}
+                  </p>
                 </div>
 
                 {/* 汇总按钮 */}

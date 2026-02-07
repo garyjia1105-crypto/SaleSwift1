@@ -69,11 +69,12 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
   /** 将日程导出为 .ics 文件 */
   const exportToIcs = () => {
     const escapeIcs = (s: string) => (s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+    const isValidDate = (dateStr: string) => /^\d{4}-\d{2}-\d{2}$/.test(dateStr);
     const formatIcsDate = (dateStr: string, timeStr?: string) => {
       const [y, m, d] = dateStr.split('-');
-      if (!timeStr) return `${y}${m}${d}`;
-      const [hh, mm] = timeStr.split(':');
-      return `${y}${m}${d}T${hh || '00'}${mm || '00'}00`;
+      if (!timeStr) return `${y || '1970'}${m?.padStart(2, '0') || '01'}${d?.padStart(2, '0') || '01'}`;
+      const [hh, mm] = (timeStr || '00:00').split(':');
+      return `${y || '1970'}${m?.padStart(2, '0') || '01'}${d?.padStart(2, '0') || '01'}T${hh || '00'}${mm || '00'}00`;
     };
     const lines: string[] = [
       'BEGIN:VCALENDAR',
@@ -82,6 +83,7 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
       'CALSCALE:GREGORIAN',
     ];
     for (const s of pendingSchedules) {
+      if (!s.date || !isValidDate(s.date)) continue;
       const dtStart = formatIcsDate(s.date, s.time);
       const isAllDay = !s.time;
       const dtEnd = isAllDay
@@ -179,24 +181,35 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
           reader.readAsDataURL(audioBlob);
           reader.onloadend = async () => {
             try {
-              const result = reader.result as string;
-              const base64data = result.split(',')[1];
+              const result = reader.result as string | null;
+              if (!result || typeof result !== 'string') {
+                setIsProcessing(false);
+                setRecording(false);
+                return;
+              }
+              const base64data = result.includes(',') ? result.split(',')[1] : undefined;
+              if (!base64data) {
+                alert('录音数据格式错误，请重新录音');
+                setIsProcessing(false);
+                setRecording(false);
+                return;
+              }
               const detectedMimeType = result.match(/data:([^;]+)/)?.[1] || mimeType;
-              
-              // 先转录语音
               const transcribedText = await transcribeAudio(base64data, detectedMimeType);
               if (transcribedText && transcribedText.trim()) {
-                // 然后解析日程
-                const result = await parseScheduleVoice(transcribedText.trim());
-                if (result) {
-                  const matchedCust = customers.find(c => 
-                    result.customerName && (c.name.includes(result.customerName) || c.company.includes(result.customerName))
+                const parsed = await parseScheduleVoice(transcribedText.trim());
+                const hasTitle = parsed && typeof (parsed as { title?: string }).title === 'string' && (parsed as { title: string }).title.trim();
+                const hasDate = parsed && typeof (parsed as { date?: string }).date === 'string' && (parsed as { date: string }).date.trim();
+                if (hasTitle && hasDate) {
+                  const p = parsed as { title: string; date: string; time?: string; customerName?: string; description?: string };
+                  const matchedCust = customers.find(c =>
+                    p.customerName && (c.name.includes(p.customerName) || c.company.includes(p.customerName))
                   );
-                  onAddSchedule({ 
-                    id: 'sched-'+Date.now(), 
-                    ...result, 
-                    customerId: matchedCust?.id || '', 
-                    status: 'pending' 
+                  onAddSchedule({
+                    id: 'sched-' + Date.now(),
+                    ...p,
+                    customerId: matchedCust?.id || '',
+                    status: 'pending',
                   });
                 } else {
                   alert('未能解析日程信息，请重新录音');

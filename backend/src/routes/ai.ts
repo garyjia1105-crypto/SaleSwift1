@@ -53,8 +53,13 @@ function getCustomApiKey(req: import('express').Request): string | undefined {
 aiRouter.post('/analyze-sales-interaction', async (req, res) => {
   try {
     const { input, audioData, locale } = req.body;
+    const hasInput = typeof input === 'string' && input.trim().length > 0;
+    const hasAudio = audioData && typeof audioData.data === 'string' && typeof audioData.mimeType === 'string';
+    if (!hasInput && !hasAudio) {
+      return res.status(400).json({ error: 'input (text) or audioData (data + mimeType) is required' });
+    }
     const customApiKey = getCustomApiKey(req);
-    const result = await ai.analyzeSalesInteraction(input, audioData, locale, customApiKey);
+    const result = await ai.analyzeSalesInteraction(hasInput ? input.trim() : '', hasAudio ? audioData : undefined, locale, customApiKey);
     return res.json(result);
   } catch (e) {
     return handleAiError(res, e, 'analyze-sales-interaction:');
@@ -81,8 +86,12 @@ aiRouter.post('/role-play-message', async (req, res) => {
     if (!customer?.name || !customer?.company || message === undefined) {
       return res.status(400).json({ error: 'customer and message required' });
     }
+    const rawHistory = Array.isArray(history) ? history : [];
+    const safeHistory = rawHistory.filter(
+      (h: unknown) => h && typeof (h as { role?: unknown }).role === 'string' && typeof (h as { text?: unknown }).text === 'string'
+    ) as { role: string; text: string }[];
     const customApiKey = getCustomApiKey(req);
-    const text = await ai.rolePlayMessage(customer, context || '', Array.isArray(history) ? history : [], message, customApiKey);
+    const text = await ai.rolePlayMessage(customer, context || '', safeHistory, typeof message === 'string' ? message : String(message ?? ''), customApiKey);
     return res.json({ text });
   } catch (e) {
     return handleAiError(res, e, 'role-play-message:');
@@ -95,8 +104,11 @@ aiRouter.post('/evaluate-role-play', async (req, res) => {
     if (!Array.isArray(history)) {
       return res.status(400).json({ error: 'history array required' });
     }
+    const sanitized = history.filter(
+      (h: unknown) => h && typeof (h as { role?: unknown }).role === 'string' && typeof (h as { text?: unknown }).text === 'string'
+    );
     const customApiKey = getCustomApiKey(req);
-    const result = await ai.evaluateRolePlay(history, customApiKey);
+    const result = await ai.evaluateRolePlay(sanitized as { role: string; text: string }[], customApiKey);
     return res.json(result);
   } catch (e) {
     return handleAiError(res, e, 'evaluate-role-play:');
@@ -113,10 +125,10 @@ aiRouter.post('/transcribe-audio', async (req, res) => {
       return res.status(400).json({ error: '音频数据太短，请重新录音（至少录音2秒）' });
     }
     
-    // 支持的音频格式
     const supportedTypes = ['audio/webm', 'audio/mp4', 'audio/ogg', 'audio/wav', 'audio/mpeg'];
-    const finalMimeType = mimeType && supportedTypes.some(t => mimeType.includes(t.split('/')[1])) 
-      ? mimeType 
+    const mimeStr = typeof mimeType === 'string' ? mimeType : '';
+    const finalMimeType = mimeStr && supportedTypes.some(t => mimeStr.includes((t.split('/')[1]) ?? ''))
+      ? mimeStr
       : 'audio/webm';
     
     console.log('转录音频，MIME类型:', finalMimeType, '数据长度:', base64Data.length);
@@ -237,12 +249,13 @@ aiRouter.post('/extract-search-keywords', async (req, res) => {
 
 aiRouter.post('/generate-report', async (req, res) => {
   try {
-    const { interactions, startDate, endDate, locale } = req.body;
+    const { interactions, startDate, endDate, locale, style } = req.body;
     if (!Array.isArray(interactions) || !startDate || !endDate) {
       return res.status(400).json({ error: 'interactions array, startDate, and endDate required' });
     }
     const customApiKey = getCustomApiKey(req);
-    const report = await ai.generateReport(interactions, startDate, endDate, locale, customApiKey);
+    const reportStyle = style === 'brief' ? 'brief' : 'detailed';
+    const report = await ai.generateReport(interactions, startDate, endDate, locale, customApiKey, reportStyle);
     return res.json({ report });
   } catch (e) {
     return handleAiError(res, e, 'generate-report:');

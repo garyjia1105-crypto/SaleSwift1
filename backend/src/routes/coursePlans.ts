@@ -22,7 +22,7 @@ coursePlansRouter.get('/', async (req: any, res) => {
   try {
     const customerId = req.query.customerId as string | undefined;
     const filter: any = { userId: req.user.id };
-    if (customerId) filter.customerId = customerId;
+    if (customerId && mongoose.Types.ObjectId.isValid(customerId)) filter.customerId = customerId;
     const list = await CoursePlan.find(filter).sort({ createdAt: -1 }).lean();
     return res.json(list.map((d: any) => toCoursePlan(d)));
   } catch (e) {
@@ -36,6 +36,9 @@ coursePlansRouter.post('/', async (req: any, res) => {
     const { customerId, title, objective, modules, resources } = req.body;
     if (!customerId || !title || !objective) {
       return res.status(400).json({ error: 'customerId, title, objective required' });
+    }
+    if (!mongoose.Types.ObjectId.isValid(customerId)) {
+      return res.status(400).json({ error: 'Invalid customerId' });
     }
     const customer = await Customer.findOne({
       _id: customerId,
@@ -59,6 +62,9 @@ coursePlansRouter.post('/', async (req: any, res) => {
 
 coursePlansRouter.get('/:id', async (req: any, res) => {
   try {
+    if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid id' });
+    }
     const doc = await CoursePlan.findOne({
       _id: req.params.id,
       userId: req.user.id,
@@ -73,6 +79,9 @@ coursePlansRouter.get('/:id', async (req: any, res) => {
 
 coursePlansRouter.delete('/:id', async (req: any, res) => {
   try {
+    if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid id' });
+    }
     const doc = await CoursePlan.findOneAndDelete({
       _id: req.params.id,
       userId: req.user.id,

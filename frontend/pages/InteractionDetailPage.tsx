@@ -133,6 +133,7 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
   const [addingAction, setAddingAction] = useState<string | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportCopied, setReportCopied] = useState(false);
+  const [reportCopyFailed, setReportCopyFailed] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ title: string; message: string; confirmLabel: string; cancelLabel: string; onConfirm: () => void } | null>(null);
   
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -186,7 +187,7 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
   const buildReportText = (): string => {
     const d = item.date ? new Date(item.date).toLocaleString(lang === 'zh' ? 'zh-CN' : lang === 'en' ? 'en-US' : lang === 'ja' ? 'ja-JP' : 'ko-KR') : '';
     const lines: string[] = [
-      `【${tHistory.report}】${item.customerProfile.name} - ${item.customerProfile.company || ''}`,
+      `【${tHistory.report}】${item.customerProfile?.name ?? ''} - ${item.customerProfile?.company ?? ''}`,
       `${tHistory.date}: ${d}`,
       `${t.stage}: ${item.intelligence?.currentStage ?? ''}`,
       `${t.confidence}: ${item.metrics?.confidenceScore ?? 0}%`,
@@ -211,6 +212,7 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
 
   const handleCopyReport = async () => {
     const text = buildReportText();
+    setReportCopyFailed(false);
     try {
       await navigator.clipboard.writeText(text);
       setReportCopied(true);
@@ -220,13 +222,20 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
       ta.value = text;
       document.body.appendChild(ta);
       ta.select();
-      try { document.execCommand('copy'); setReportCopied(true); setTimeout(() => setReportCopied(false), 2000); } catch (_) {}
+      try {
+        document.execCommand('copy');
+        setReportCopied(true);
+        setTimeout(() => setReportCopied(false), 2000);
+      } catch {
+        setReportCopyFailed(true);
+        setTimeout(() => setReportCopyFailed(false), 2000);
+      }
       document.body.removeChild(ta);
     }
   };
 
-  const sentimentColor = item.metrics.sentiment === '正面' ? 'text-emerald-600' : 
-                         item.metrics.sentiment === '负面' ? 'text-rose-600' : 'text-gray-600';
+  const sentimentColor = item.metrics?.sentiment === '正面' ? 'text-emerald-600' :
+                         item.metrics?.sentiment === '负面' ? 'text-rose-600' : 'text-gray-600';
 
   const handleAddToSchedule = (step: any) => {
     if (!onAddSchedule || isScheduled(step.action)) return;
@@ -239,7 +248,7 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
       title: step.action,
       date: date,
       status: 'pending',
-      description: `互动复盘: ${item.customerProfile.name}`
+      description: `互动复盘: ${item.customerProfile?.name ?? '客户'}`
     });
   };
 
@@ -346,20 +355,20 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
       <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-6 md:mb-8">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h2 className={`text-2xl md:text-3xl font-black tracking-tight ${colors.text.primary}`}>{item.customerProfile.name}</h2>
+            <h2 className={`text-2xl md:text-3xl font-black tracking-tight ${colors.text.primary}`}>{item.customerProfile?.name ?? '—'}</h2>
             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
               theme === 'dark' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
               theme === 'orange' ? 'bg-orange-50 text-orange-600 border border-orange-200' :
               theme === 'nature' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' :
               'bg-blue-50 text-blue-600 border border-blue-100'
             }`}>
-              {item.intelligence.currentStage}
+              {item.intelligence?.currentStage ?? '—'}
             </span>
           </div>
-          <p className="text-xs md:text-base text-gray-500 font-bold uppercase tracking-wider">{item.customerProfile.company}</p>
-          {(item.customerProfile.role || item.customerProfile.industry) && (
+          <p className="text-xs md:text-base text-gray-500 font-bold uppercase tracking-wider">{item.customerProfile?.company ?? '—'}</p>
+          {(item.customerProfile?.role || item.customerProfile?.industry) && (
             <p className="text-[10px] text-gray-400 mt-0.5 font-medium">
-              {[item.customerProfile.role, item.customerProfile.industry].filter(Boolean).join(' · ')}
+              {[item.customerProfile?.role, item.customerProfile?.industry].filter(Boolean).join(' · ')}
             </p>
           )}
         </div>
@@ -368,20 +377,20 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
             <span className="text-gray-400 text-[9px] font-black uppercase tracking-widest">{t.confidence}</span>
             <div className="flex items-center gap-2 bg-white px-2.5 py-1 rounded-full border border-gray-100 shadow-sm">
               <div className="w-16 md:w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-600" style={{ width: `${item.metrics.confidenceScore}%` }}></div>
+                <div className="h-full bg-blue-600" style={{ width: `${item.metrics?.confidenceScore ?? 0}%` }}></div>
               </div>
-              <span className="font-black text-[10px] text-gray-900">{item.metrics.confidenceScore}%</span>
+              <span className="font-black text-[10px] text-gray-900">{item.metrics?.confidenceScore ?? 0}%</span>
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-1.5 text-[9px]">
             <span className="text-gray-400 font-bold uppercase tracking-wider">{t.talk_ratio}</span>
-            <span className="text-gray-900 font-black">{(item.metrics.talkRatio * 100).toFixed(0)}%</span>
+            <span className="text-gray-900 font-black">{((item.metrics?.talkRatio ?? 0) * 100).toFixed(0)}%</span>
             <span className="text-gray-300">·</span>
             <span className="text-gray-400 font-bold uppercase tracking-wider">{t.questions}</span>
-            <span className="text-gray-900 font-black">{item.metrics.questionRate}</span>
+            <span className="text-gray-900 font-black">{item.metrics?.questionRate ?? '—'}</span>
             <span className="text-gray-300">·</span>
             <span className="text-gray-400 font-bold uppercase tracking-wider">{t.sentiment}</span>
-            <span className={`font-black ${sentimentColor}`}>{item.metrics.sentiment}</span>
+            <span className={`font-black ${sentimentColor}`}>{item.metrics?.sentiment ?? '—'}</span>
           </div>
         </div>
       </div>
@@ -414,7 +423,7 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
                   <AlertTriangle size={12} className="text-rose-500" /> {t.pain_points}
                 </h4>
                 <div className="space-y-2">
-                  {item.intelligence.painPoints.map((p, i) => (
+                  {(item.intelligence?.painPoints ?? []).map((p, i) => (
                     <div key={i} className="p-3 bg-rose-50/30 rounded-xl text-[10px] text-rose-900 leading-snug font-bold border border-rose-50">
                       {p}
                     </div>
@@ -426,7 +435,7 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
                   <CheckCircle size={12} className="text-emerald-500" /> {t.key_interests}
                 </h4>
                 <div className="space-y-2">
-                  {item.intelligence.keyInterests.map((p, i) => (
+                  {(item.intelligence?.keyInterests ?? []).map((p, i) => (
                     <div key={i} className="flex items-center justify-between p-3 bg-emerald-50/30 rounded-xl border border-emerald-50 transition-all hover:border-emerald-200">
                       <span className="text-[10px] text-emerald-900 font-bold">{p}</span>
                       <button 
@@ -445,7 +454,7 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
         {/* Next Steps */}
           <DetailSection title={t.next_steps} icon={<Calendar />} variant="secondary">
             <div className="space-y-3">
-              {item.intelligence.nextSteps.map((step, i) => {
+              {(item.intelligence?.nextSteps ?? []).map((step, i) => {
                 const alreadyScheduled = isScheduled(step.action);
                 return (
                   <div key={i} className={`p-3.5 border rounded-2xl flex items-center justify-between gap-3 transition-all ${alreadyScheduled ? 'bg-gray-50/50 border-gray-100 opacity-60' : 'bg-white border-indigo-50 shadow-sm hover:border-indigo-200'}`}>
@@ -601,10 +610,16 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
                 <button
                   type="button"
                   onClick={handleCopyReport}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold btn-active-scale ${colors.button.primary}`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold btn-active-scale ${
+                    reportCopyFailed ? 'bg-red-500 hover:bg-red-600 text-white' : colors.button.primary
+                  }`}
                 >
                   {reportCopied ? <Check size={16} /> : <Copy size={16} />}
-                  {reportCopied ? (lang === 'zh' ? '已复制' : lang === 'en' ? 'Copied' : lang === 'ja' ? 'コピー済み' : '복사됨') : tHistory.copy}
+                  {reportCopyFailed
+                    ? (tHistory as { copy_failed?: string }).copy_failed ?? '复制失败'
+                    : reportCopied
+                      ? (lang === 'zh' ? '已复制' : lang === 'en' ? 'Copied' : lang === 'ja' ? 'コピー済み' : '복사됨')
+                      : tHistory.copy}
                 </button>
                 <button type="button" onClick={() => setShowReportModal(false)} className={`px-4 py-2.5 rounded-xl text-xs font-bold ${colors.button.secondary}`}>
                   {lang === 'zh' ? '关闭' : lang === 'en' ? 'Close' : lang === 'ja' ? '閉じる' : '닫기'}

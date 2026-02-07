@@ -23,7 +23,7 @@ interactionsRouter.get('/', async (req: any, res) => {
   try {
     const customerId = req.query.customerId as string | undefined;
     const filter: any = { userId: req.user.id };
-    if (customerId) filter.customerId = customerId;
+    if (customerId && mongoose.Types.ObjectId.isValid(customerId)) filter.customerId = customerId;
     const list = await Interaction.find(filter)
       .sort({ date: -1 })
       .lean();
@@ -40,9 +40,10 @@ interactionsRouter.post('/', async (req: any, res) => {
     if (!customerProfile || !intelligence || !metrics || !Array.isArray(suggestions)) {
       return res.status(400).json({ error: 'customerProfile, intelligence, metrics, suggestions required' });
     }
+    const validCustomerId = customerId && mongoose.Types.ObjectId.isValid(customerId) ? customerId : null;
     const interaction = await Interaction.create({
       userId: req.user.id,
-      customerId: customerId || null,
+      customerId: validCustomerId,
       date: date || new Date().toISOString(),
       rawInput: rawInput ?? '',
       customerProfile,
@@ -59,6 +60,9 @@ interactionsRouter.post('/', async (req: any, res) => {
 
 interactionsRouter.get('/:id', async (req: any, res) => {
   try {
+    if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid id' });
+    }
     const doc = await Interaction.findOne({
       _id: req.params.id,
       userId: req.user.id,
@@ -73,6 +77,9 @@ interactionsRouter.get('/:id', async (req: any, res) => {
 
 interactionsRouter.delete('/:id', async (req: any, res) => {
   try {
+    if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid id' });
+    }
     const doc = await Interaction.findOneAndDelete({
       _id: req.params.id,
       userId: req.user.id,
