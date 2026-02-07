@@ -20,7 +20,8 @@ import {
   Sparkles,
   Loader2,
   CheckCircle2,
-  Circle
+  Circle,
+  Trash2
 } from 'lucide-react';
 import { translations, Language } from '../translations';
 import { generateCoursePlan } from '../services/aiService';
@@ -36,10 +37,11 @@ interface Props {
   onToggleScheduleStatus: (id: string) => void;
   onUpdateSchedule: (id: string, updates: Partial<Schedule>) => void;
   onUpdateCustomer: (c: Customer) => void;
+  onDeleteCustomer?: (id: string) => void;
   lang: Language;
 }
 
-const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedules, coursePlans, onSaveCoursePlan, onAddSchedule, onToggleScheduleStatus, onUpdateSchedule, onUpdateCustomer, lang }) => {
+const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedules, coursePlans, onSaveCoursePlan, onAddSchedule, onToggleScheduleStatus, onUpdateSchedule, onUpdateCustomer, onDeleteCustomer, lang }) => {
   const t = translations[lang].customer_detail;
   const { colors, theme } = useTheme();
   const { id } = useParams<{ id: string }>();
@@ -143,6 +145,22 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
           <Link to={`/roleplay/${customer.id}`} className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-500 text-white rounded-lg text-[10px] font-bold btn-active-scale shadow-sm">
             <Target size={12} /> {t.roleplay}
           </Link>
+          {onDeleteCustomer && (
+            <button
+              type="button"
+              onClick={() => {
+                const msg = lang === 'zh' ? `确定删除客户「${customer.name}」？其复盘与日程将一并移除。` : lang === 'en' ? `Delete "${customer.name}"? Their reviews and schedules will be removed.` : lang === 'ja' ? `「${customer.name}」を削除しますか？復盤・予定も削除されます。` : `"${customer.name}" 삭제할까요? 리뷰와 일정도 삭제됩니다.`;
+                if (window.confirm(msg)) {
+                  onDeleteCustomer(customer.id);
+                  navigate('/customers');
+                }
+              }}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg text-[10px] font-bold btn-active-scale border border-rose-200"
+              title={lang === 'zh' ? '删除客户' : lang === 'en' ? 'Delete' : lang === 'ja' ? '削除' : '삭제'}
+            >
+              <Trash2 size={12} /> {lang === 'zh' ? '删除' : lang === 'en' ? 'Delete' : lang === 'ja' ? '削除' : '삭제'}
+            </button>
+          )}
         </div>
       </div>
 

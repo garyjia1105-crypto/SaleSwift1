@@ -13,7 +13,8 @@ import {
   X,
   User,
   Tags,
-  Filter
+  Filter,
+  Trash2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -41,10 +42,11 @@ interface Props {
   interactions: Interaction[];
   onSync: (customers: Customer[]) => void;
   onAdd: (customer: Customer) => void;
+  onDeleteCustomer: (id: string) => void;
   lang: Language;
 }
 
-const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSync, onAdd, lang }) => {
+const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSync, onAdd, onDeleteCustomer, lang }) => {
   const t = translations[lang].customers;
   const { colors } = useTheme();
 
@@ -186,27 +188,39 @@ const CustomerManagementPage: React.FC<Props> = ({ customers, interactions, onSy
           </div>
         ) : (
           filtered.map(customer => (
-            <Link 
-              key={customer.id} 
-              to={`/customers/${customer.id}`}
-              className="group bg-white p-4 rounded-2xl border border-gray-100 soft-shadow hover:border-blue-100 transition-all flex items-center gap-4"
-            >
-              <div className={`w-10 h-10 rounded-xl ${colors.badge.primary} flex items-center justify-center font-bold text-sm shrink-0`}>
-                <User size={18} />
-              </div>
-              <div className="flex-1 overflow-hidden">
-                <h4 className="text-sm font-bold text-gray-900 truncate">{customer.name}</h4>
-                <p className="text-[10px] text-gray-500 flex items-center gap-1 truncate">
-                  <Building2 size={10} /> {customer.company}
-                </p>
-                <div className="flex gap-1 mt-1 overflow-hidden">
-                  {customer.tags.slice(0, 2).map(tag => (
-                    <span key={tag} className="text-[8px] px-1.5 py-0.5 bg-gray-50 text-gray-400 rounded-full font-bold">{tag}</span>
-                  ))}
+            <div key={customer.id} className="group bg-white p-4 rounded-2xl border border-gray-100 soft-shadow hover:border-blue-100 transition-all flex items-center gap-4">
+              <Link to={`/customers/${customer.id}`} className="flex-1 flex items-center gap-4 min-w-0">
+                <div className={`w-10 h-10 rounded-xl ${colors.badge.primary} flex items-center justify-center font-bold text-sm shrink-0`}>
+                  <User size={18} />
                 </div>
-              </div>
-              <ChevronRight size={14} className={`text-gray-300 transition-all shrink-0 ${colors.hover.accent}`} />
-            </Link>
+                <div className="flex-1 overflow-hidden min-w-0">
+                  <h4 className="text-sm font-bold text-gray-900 truncate">{customer.name}</h4>
+                  <p className="text-[10px] text-gray-500 flex items-center gap-1 truncate">
+                    <Building2 size={10} /> {customer.company}
+                  </p>
+                  <div className="flex gap-1 mt-1 overflow-hidden">
+                    {customer.tags.slice(0, 2).map(tag => (
+                      <span key={tag} className="text-[8px] px-1.5 py-0.5 bg-gray-50 text-gray-400 rounded-full font-bold">{tag}</span>
+                    ))}
+                  </div>
+                </div>
+                <ChevronRight size={14} className={`text-gray-300 transition-all shrink-0 ${colors.hover.accent}`} />
+              </Link>
+              {onDeleteCustomer && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const msg = lang === 'zh' ? `确定删除客户「${customer.name}」？其复盘与日程将一并移除。` : lang === 'en' ? `Delete "${customer.name}"? Their reviews and schedules will be removed.` : lang === 'ja' ? `「${customer.name}」を削除しますか？復盤・予定も削除されます。` : `"${customer.name}" 삭제할까요? 리뷰와 일정도 삭제됩니다.`;
+                    if (window.confirm(msg)) onDeleteCustomer(customer.id);
+                  }}
+                  className="shrink-0 p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                  title={lang === 'zh' ? '删除客户' : lang === 'en' ? 'Delete' : lang === 'ja' ? '削除' : '삭제'}
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </div>
           ))
         )}
       </div>

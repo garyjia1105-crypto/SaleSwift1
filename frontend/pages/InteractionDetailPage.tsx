@@ -24,7 +24,8 @@ import {
   User as UserIcon,
   RefreshCw,
   Copy,
-  Check
+  Check,
+  Trash2
 } from 'lucide-react';
 import { Interaction, Schedule } from '../types';
 import { deepDiveIntoInterest, continueDeepDiveIntoInterest, askAboutInteraction } from '../services/aiService';
@@ -105,10 +106,11 @@ interface Props {
   interactions: Interaction[];
   schedules: Schedule[];
   onAddSchedule?: (s: Schedule) => void;
+  onDeleteInteraction?: (id: string) => void;
   lang: Language;
 }
 
-const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAddSchedule, lang }) => {
+const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAddSchedule, onDeleteInteraction, lang }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { colors, theme } = useTheme();
@@ -308,14 +310,33 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, schedules, onAdd
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors text-[10px] font-black uppercase tracking-widest shrink-0">
           <ArrowLeft size={14} /> <span>{t.back}</span>
         </button>
-        <button
-          type="button"
-          onClick={() => setShowReportModal(true)}
-          className={`ml-auto flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold btn-active-scale shrink-0 ${colors.button.primary}`}
-        >
-          <FileText size={14} />
-          {tHistory.report}
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          {onDeleteInteraction && item && (
+            <button
+              type="button"
+              onClick={() => {
+                const msg = lang === 'zh' ? '确定删除本条复盘？' : lang === 'en' ? 'Delete this review?' : lang === 'ja' ? 'この復盤を削除しますか？' : '이 리뷰를 삭제할까요?';
+                if (window.confirm(msg)) {
+                  onDeleteInteraction(item.id);
+                  navigate('/history');
+                }
+              }}
+              className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-bold btn-active-scale shrink-0 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200`}
+              title={lang === 'zh' ? '删除复盘' : lang === 'en' ? 'Delete' : lang === 'ja' ? '削除' : '삭제'}
+            >
+              <Trash2 size={14} />
+              {lang === 'zh' ? '删除' : lang === 'en' ? 'Delete' : lang === 'ja' ? '削除' : '삭제'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowReportModal(true)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold btn-active-scale shrink-0 ${colors.button.primary}`}
+          >
+            <FileText size={14} />
+            {tHistory.report}
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-6 md:mb-8">

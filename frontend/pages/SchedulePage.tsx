@@ -15,7 +15,9 @@ import {
   Calendar,
   X,
   Edit2,
-  Check
+  Check,
+  Download,
+  Trash2
 } from 'lucide-react';
 import { parseScheduleVoice, transcribeAudio } from '../services/aiService';
 import { translations, Language } from '../translations';
@@ -27,10 +29,11 @@ interface Props {
   onAddSchedule: (s: Schedule) => void;
   onToggleStatus: (id: string) => void;
   onUpdateSchedule: (id: string, updates: Partial<Schedule>) => void;
+  onDeleteSchedule: (id: string) => void;
   lang: Language;
 }
 
-const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, onToggleStatus, onUpdateSchedule, lang }) => {
+const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, onToggleStatus, onUpdateSchedule, onDeleteSchedule, lang }) => {
   const t = translations[lang].schedule;
   const { colors } = useTheme();
   const [recording, setRecording] = useState(false);
@@ -60,6 +63,71 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
   
   // 合并：待处理的在前，已完成的在后
   const sortedSchedules = [...sortedPending, ...sortedCompleted];
+
+  /** 将日程导出为 .ics 文件 */
+  const exportToIcs = () => {
+    const escapeIcs = (s: string) => (s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+    const formatIcsDate = (dateStr: string, timeStr?: string) => {
+      const [y, m, d] = dateStr.split('-');
+      if (!timeStr) return `${y}${m}${d}`;
+      const [hh, mm] = timeStr.split(':');
+      return `${y}${m}${d}T${hh || '00'}${mm || '00'}00`;
+    };
+    const lines: string[] = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//SaleSwift//Schedule//EN',
+      'CALSCALE:GREGORIAN',
+    ];
+    for (const s of pendingSchedules) {
+      const dtStart = formatIcsDate(s.date, s.time);
+      const isAllDay = !s.time;
+      const dtEnd = isAllDay
+        ? (() => {
+            const next = new Date(s.date + 'T00:00:00');
+            next.setDate(next.getDate() + 1);
+            const y = next.getFullYear();
+            const m = String(next.getMonth() + 1).padStart(2, '0');
+            const d = String(next.getDate()).padStart(2, '0');
+            return `${y}${m}${d}`;
+          })()
+        : (() => {
+            const [y, m, d] = s.date.split('-');
+            const [hh, mm] = (s.time || '00:00').split(':');
+            const end = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10), parseInt(hh, 10), parseInt(mm, 10) + 60);
+            const ye = end.getFullYear();
+            const me = String(end.getMonth() + 1).padStart(2, '0');
+            const de = String(end.getDate()).padStart(2, '0');
+            const he = String(end.getHours()).padStart(2, '0');
+            const mi = String(end.getMinutes()).padStart(2, '0');
+            return `${ye}${me}${de}T${he}${mi}00`;
+          })();
+      const summary = escapeIcs(s.title);
+      const desc = [s.description, s.customerId ? customers.find(c => c.id === s.customerId)?.name : null].filter(Boolean).join(' · ');
+      lines.push('BEGIN:VEVENT');
+      lines.push(`UID:${s.id}@saleswift`);
+      if (isAllDay) {
+        lines.push(`DTSTART;VALUE=DATE:${dtStart}`);
+        lines.push(`DTEND;VALUE=DATE:${dtEnd}`);
+      } else {
+        lines.push(`DTSTART:${dtStart}`);
+        lines.push(`DTEND:${dtEnd}`);
+      }
+      lines.push(`SUMMARY:${summary}`);
+      if (desc) lines.push(`DESCRIPTION:${escapeIcs(desc)}`);
+      lines.push(`STATUS:${s.status === 'completed' ? 'CONFIRMED' : 'CONFIRMED'}`);
+      lines.push('END:VEVENT');
+    }
+    lines.push('END:VCALENDAR');
+    const icsContent = lines.join('\r\n');
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `schedules-${new Date().toISOString().slice(0, 10)}.ics`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const startVoiceInput = async () => {
     try {
@@ -193,9 +261,21 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
         />
       )}
       <div className="page-transition flex flex-col flex-1 min-h-0">
-        <header className="shrink-0">
-          <h2 className={`text-base font-bold leading-none ${colors.text.primary}`}>{t.title}</h2>
-          <p className="text-[10px] text-gray-400 font-medium mt-1">{t.subtitle}</p>
+        <header className="shrink-0 flex items-start justify-between gap-3">
+          <div>
+            <h2 className={`text-base font-bold leading-none ${colors.text.primary}`}>{t.title}</h2>
+            <p className="text-[10px] text-gray-400 font-medium mt-1">{t.subtitle}</p>
+          </div>
+          <button
+            type="button"
+            onClick={exportToIcs}
+            disabled={pendingSchedules.length === 0}
+            className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold btn-active-scale ${pendingSchedules.length === 0 ? 'opacity-50 cursor-not-allowed ' : ''}${colors.button.secondary}`}
+            title={lang === 'zh' ? '导出为 .ics 日历文件' : lang === 'en' ? 'Export as .ics file' : lang === 'ja' ? '.ics でエクスポート' : '.ics 파일로 내보내기'}
+          >
+            <Download size={14} />
+            {lang === 'zh' ? '导出' : lang === 'en' ? 'Export' : lang === 'ja' ? 'エクスポート' : '내보내기'}
+          </button>
         </header>
 
         <main className="flex-1 overflow-auto pb-0">
@@ -243,10 +323,23 @@ const SchedulePage: React.FC<Props> = ({ schedules, customers, onAddSchedule, on
                       });
                     }}
                     className="shrink-0 p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                    title="编辑"
+                    title={lang === 'zh' ? '编辑' : lang === 'en' ? 'Edit' : lang === 'ja' ? '編集' : '편집'}
                   >
                     <Edit2 size={14} />
                   </button>
+                  {onDeleteSchedule && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const msg = lang === 'zh' ? '确定删除该日程？' : lang === 'en' ? 'Delete this schedule?' : lang === 'ja' ? 'この予定を削除しますか？' : '이 일정을 삭제할까요?';
+                        if (window.confirm(msg)) onDeleteSchedule(item.id);
+                      }}
+                      className="shrink-0 p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                      title={lang === 'zh' ? '删除' : lang === 'en' ? 'Delete' : lang === 'ja' ? '削除' : '삭제'}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
             );
