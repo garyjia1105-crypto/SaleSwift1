@@ -158,8 +158,12 @@ export async function deepDiveIntoInterest(
 ): Promise<string> {
   const ai = getAI(customApiKey);
   const model = getModel('pro');
-  const prompt = `你是一位顶尖的销售战略专家。针对客户 ${customer.name} (${customer.role} @ ${customer.company}) 表现出的关键兴趣点："${interest}"，请基于其行业背景提供一份【深度情报分析报告】。
-内容需包含：核心驱动力分析、差异化竞争策略、高转化谈资、行动建议。使用 Markdown 格式。`;
+  const prompt = `你是一位顶尖的销售战略专家。请仅针对下面这一个兴趣关键词进行重点解析，不要泛化到其他兴趣或宽泛话题，紧扣该关键词展开。
+
+兴趣关键词：「${interest}」
+客户背景：${customer.name}，${customer.role} @ ${customer.company}。可结合其行业背景分析。
+
+请围绕上述关键词提供【深度情报分析】，包含：该兴趣点的核心驱动力、针对该点的差异化竞争策略、与该点相关的高转化谈资、围绕该点的具体行动建议。使用 Markdown 格式，内容紧扣「${interest}」不跑题。`;
   const response = await ai.models.generateContent({
     model,
     contents: prompt,
@@ -178,7 +182,7 @@ export async function continueDeepDiveIntoInterest(
   const ai = getAI(customApiKey);
   const model = getModel('pro');
   const context = history.map((h) => `${h.role === 'user' ? '用户提问' : 'AI分析'}: ${h.text}`).join('\n\n');
-  const prompt = `背景：我们正在深入探讨客户 ${customer.name} (${customer.role} @ ${customer.company}) 对 "${interest}" 的兴趣。\n之前的对话：\n${context}\n用户的新问题："${question}"\n请继续提供深度的销售战略洞察。`;
+  const prompt = `背景：我们正在针对唯一兴趣关键词「${interest}」进行深度解析，客户：${customer.name} (${customer.role} @ ${customer.company})。回答时请仅围绕该关键词展开，不要扯到其他兴趣或泛化话题。\n\n之前的对话：\n${context}\n\n用户的新问题："${question}"\n请紧扣「${interest}」继续提供深度的销售战略洞察。`;
   const response = await ai.models.generateContent({
     model,
     contents: prompt,

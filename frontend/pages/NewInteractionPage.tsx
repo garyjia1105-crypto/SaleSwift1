@@ -62,25 +62,41 @@ const sentimentColor = (s: string | undefined) => {
   return { dot: 'bg-gray-400', text: 'text-gray-600' };
 };
 
-/** 根据复盘客户画像（姓名、公司）在客户列表中自动匹配一条，优先姓名+公司都匹配。 */
+/** 公司为占位符（未知、—等）时视为无效，不参与匹配，避免多人同写「未知」被错误关联。 */
+function isPlaceholderCompany(s: string | undefined): boolean {
+  const t = (s ?? '').trim().toLowerCase();
+  return !t || t === '未知' || t === '—' || t === '-' || t === '未知公司' || t === '暂无' || t === '无';
+}
+
+/** 根据复盘客户画像（姓名、公司）在客户列表中自动匹配一条：有姓名时只按姓名匹配，不按公司兜底；公司为占位符时不按公司匹配。 */
 function findCustomerByProfile(
   profile: { name?: string; company?: string },
   customers: Customer[]
 ): Customer | null {
   const nameNorm = (profile?.name ?? '').trim().toLowerCase();
   const companyNorm = (profile?.company ?? '').trim().toLowerCase();
-  if (!nameNorm && !companyNorm) return null;
-  const byBoth = customers.find(
-    (c) =>
-      (c.name ?? '').trim().toLowerCase() === nameNorm &&
-      (c.company ?? '').trim().toLowerCase() === companyNorm
-  );
-  if (byBoth) return byBoth;
+  const companyIsPlaceholder = isPlaceholderCompany(profile?.company);
+  if (!nameNorm && (!companyNorm || companyIsPlaceholder)) return null;
+
+  // 1) 姓名+公司都有效且都匹配时，优先返回
+  if (nameNorm && companyNorm && !companyIsPlaceholder) {
+    const byBoth = customers.find(
+      (c) =>
+        (c.name ?? '').trim().toLowerCase() === nameNorm &&
+        (c.company ?? '').trim().toLowerCase() === companyNorm
+    );
+    if (byBoth) return byBoth;
+  }
+
+  // 2) 有姓名时只按姓名匹配，匹配不到则不关联（不再按公司兜底，避免「王校长+未知」误关联到「高女士+未知」）
   if (nameNorm) {
     const byName = customers.find((c) => (c.name ?? '').trim().toLowerCase() === nameNorm);
     if (byName) return byName;
+    return null;
   }
-  if (companyNorm) {
+
+  // 3) 仅当没有姓名且公司非占位符时，才按公司匹配
+  if (companyNorm && !companyIsPlaceholder) {
     const byCompany = customers.find((c) => (c.company ?? '').trim().toLowerCase() === companyNorm);
     if (byCompany) return byCompany;
   }

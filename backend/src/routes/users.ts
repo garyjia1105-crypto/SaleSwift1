@@ -16,6 +16,7 @@ usersRouter.get('/me', async (req: any, res) => {
       avatar: user.avatar ?? null,
       language: user.language ?? null,
       theme: user.theme ?? null,
+      industry: user.industry ?? '',
     });
   } catch (e) {
     console.error(e);
@@ -25,13 +26,14 @@ usersRouter.get('/me', async (req: any, res) => {
 
 usersRouter.patch('/me', async (req: any, res) => {
   try {
-    const { avatar, language, theme, displayName } = req.body;
+    const { avatar, language, theme, displayName, industry } = req.body;
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (avatar !== undefined) user.avatar = avatar;
     if (language !== undefined) user.language = language;
     if (theme !== undefined) user.theme = theme;
     if (displayName !== undefined) user.displayName = displayName;
+    if (industry !== undefined) user.industry = typeof industry === 'string' ? industry : '';
     await user.save();
     return res.json({
       id: user._id.toString(),
@@ -40,6 +42,7 @@ usersRouter.patch('/me', async (req: any, res) => {
       avatar: user.avatar ?? null,
       language: user.language ?? null,
       theme: user.theme ?? null,
+      industry: user.industry ?? '',
     });
   } catch (e) {
     console.error(e);

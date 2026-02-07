@@ -22,6 +22,7 @@ export const getThemeColors = (theme: Theme) => {
       text: theme === 'dark' ? 'text-blue-400' : theme === 'orange' ? 'text-orange-600' : theme === 'nature' ? 'text-emerald-600' : 'text-blue-600',
       border: theme === 'dark' ? 'border-blue-500' : theme === 'orange' ? 'border-orange-600' : theme === 'nature' ? 'border-emerald-600' : 'border-blue-600',
       ring: theme === 'dark' ? 'ring-blue-500' : theme === 'orange' ? 'ring-orange-500' : theme === 'nature' ? 'ring-emerald-500' : 'ring-blue-500',
+      focusRing: theme === 'dark' ? 'focus:ring-2 focus:ring-blue-500' : theme === 'orange' ? 'focus:ring-2 focus:ring-orange-500' : theme === 'nature' ? 'focus:ring-2 focus:ring-emerald-500' : 'focus:ring-2 focus:ring-blue-500',
       hover: theme === 'dark' ? 'hover:bg-blue-600' : theme === 'orange' ? 'hover:bg-orange-700' : theme === 'nature' ? 'hover:bg-emerald-700' : 'hover:bg-blue-700',
     },
     // 文字颜色
@@ -56,6 +57,13 @@ export const getThemeColors = (theme: Theme) => {
         : theme === 'nature'
         ? 'border border-emerald-300 hover:bg-emerald-50 text-emerald-600'
         : 'border border-blue-300 hover:bg-blue-50 text-blue-600',
+      editIcon: theme === 'dark'
+        ? 'text-gray-400 hover:text-blue-400 hover:bg-gray-700'
+        : theme === 'orange'
+        ? 'text-gray-400 hover:text-orange-600 hover:bg-orange-50'
+        : theme === 'nature'
+        ? 'text-gray-400 hover:text-emerald-600 hover:bg-emerald-50'
+        : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50',
     },
     // 标签/徽章样式
     badge: {

@@ -92,9 +92,9 @@ export const api = {
   },
   users: {
     getMe: () =>
-      request<{ id: string; email: string; displayName?: string; avatar?: string; language?: string; theme?: string }>('/api/users/me'),
-    patchMe: (body: { avatar?: string; language?: string; theme?: string; displayName?: string }) =>
-      request<{ id: string; email: string; displayName?: string; avatar?: string; language?: string; theme?: string }>('/api/users/me', {
+      request<{ id: string; email: string; displayName?: string; avatar?: string; language?: string; theme?: string; industry?: string }>('/api/users/me'),
+    patchMe: (body: { avatar?: string; language?: string; theme?: string; displayName?: string; industry?: string }) =>
+      request<{ id: string; email: string; displayName?: string; avatar?: string; language?: string; theme?: string; industry?: string }>('/api/users/me', {
         method: 'PATCH',
         body: JSON.stringify(body),
       }),

@@ -192,14 +192,14 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, customers = [], 
     }
   };
 
-  /** 是否已加入日程：优先按 planId 匹配，无 planId 时按 customerId+title 兼容旧数据。 */
+  /** 是否已加入日程：按 planId 匹配时须同时匹配本复盘客户，避免历史 planId（如 step-2）跨复盘误匹配。 */
   const isScheduled = useMemo(() => (step: { id?: string; action: string }) => {
     const planId = step.id;
     const cid = item?.customerId ?? null;
     const actionNorm = (step.action || '').trim();
     return schedules.some(s => {
-      if (planId && s.planId === planId) return true;
       const scid = s.customerId ?? null;
+      if (planId && s.planId === planId && scid === cid) return true;
       const titleNorm = (s.title || '').trim();
       return scid === cid && titleNorm === actionNorm;
     });
@@ -208,14 +208,14 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, customers = [], 
   const tInt = t as Record<string, string>;
   const getPriorityLabel = (p: '高' | '中' | '低') => p === '高' ? (tInt.priority_high ?? '高') : p === '中' ? (tInt.priority_medium ?? '中') : (tInt.priority_low ?? '低');
 
-  /** 返回该行动项对应的日程状态：未加入 null，已加入待办 'pending'，已完成 'completed'。 */
+  /** 返回该行动项对应的日程状态：按 planId 匹配时须同时匹配本复盘客户。 */
   const getScheduleStatusForAction = useMemo(() => (step: { id?: string; action: string }): 'pending' | 'completed' | null => {
     const planId = step.id;
     const cid = item?.customerId ?? null;
     const actionNorm = (step.action || '').trim();
     const found = schedules.find(s => {
-      if (planId && s.planId === planId) return true;
       const scid = s.customerId ?? null;
+      if (planId && s.planId === planId && scid === cid) return true;
       const titleNorm = (s.title || '').trim();
       return scid === cid && titleNorm === actionNorm;
     });
@@ -235,15 +235,15 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, customers = [], 
     }
   }, [assistantHistory, isAssistantThinking]);
 
-  // 当某个「下一步」被添加为日程后（按 planId 或 title 匹配），自动清除 loading
+  // 当某个「下一步」被添加为日程后（按 planId+客户 或 title+客户 匹配），自动清除 loading
   useEffect(() => {
     if (!addingPlanId) return;
-    const exists = schedules.some(s => s.planId === addingPlanId);
+    const cid = item?.customerId ?? null;
+    const exists = schedules.some(s => s.planId === addingPlanId && (s.customerId ?? null) === cid);
     if (exists) setAddingPlanId(null);
     else {
       const step = stepsWithId.find(s => s.id === addingPlanId);
       if (step) {
-        const cid = item?.customerId ?? null;
         const actionNorm = (step.action || '').trim();
         const byTitle = schedules.some(s => (s.customerId ?? null) === cid && (s.title || '').trim() === actionNorm);
         if (byTitle) setAddingPlanId(null);
@@ -922,10 +922,11 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, customers = [], 
                     })()}
                   </>
                 ) : (
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-bold text-gray-500 uppercase">{tInt.link_add_customer ?? '添加客户'}</p>
+                  <div className="space-y-3">
+                    <p className="text-[11px] font-bold text-gray-500 uppercase">{tInt.link_new_customer_form ?? '填写新客户信息'}</p>
                     {(() => {
                       const tC = (translations[lang] ?? translations.zh).customers as Record<string, string>;
+                      const roleLabel = lang === 'zh' ? '职位' : lang === 'en' ? 'Role' : lang === 'ja' ? '役職' : '직책';
                       return (
                         <form
                           onSubmit={async (e) => {
@@ -948,28 +949,37 @@ const InteractionDetailPage: React.FC<Props> = ({ interactions, customers = [], 
                               setNewLinkCustomer({ name: '', company: '', role: '' });
                             }
                           }}
-                          className="space-y-2"
+                          className="space-y-3"
                         >
-                          <input
-                            required
-                            value={newLinkCustomer.name}
-                            onChange={(e) => setNewLinkCustomer(prev => ({ ...prev, name: e.target.value }))}
-                            placeholder={tC.name ?? '姓名'}
-                            className={`w-full px-3 py-2 text-xs rounded-lg border ${colors.border.light} ${colors.bg.input} outline-none focus:ring-1 ${colors.primary.ring}`}
-                          />
-                          <input
-                            required
-                            value={newLinkCustomer.company}
-                            onChange={(e) => setNewLinkCustomer(prev => ({ ...prev, company: e.target.value }))}
-                            placeholder={tC.company ?? '公司'}
-                            className={`w-full px-3 py-2 text-xs rounded-lg border ${colors.border.light} ${colors.bg.input} outline-none focus:ring-1 ${colors.primary.ring}`}
-                          />
-                          <input
-                            value={newLinkCustomer.role}
-                            onChange={(e) => setNewLinkCustomer(prev => ({ ...prev, role: e.target.value }))}
-                            placeholder={lang === 'zh' ? '职位' : lang === 'en' ? 'Role' : lang === 'ja' ? '役職' : '직책'}
-                            className={`w-full px-3 py-2 text-xs rounded-lg border ${colors.border.light} ${colors.bg.input} outline-none focus:ring-1 ${colors.primary.ring}`}
-                          />
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{tC.name ?? '姓名'}</label>
+                            <input
+                              required
+                              value={newLinkCustomer.name}
+                              onChange={(e) => setNewLinkCustomer(prev => ({ ...prev, name: e.target.value }))}
+                              placeholder={tC.name ?? '姓名'}
+                              className={`w-full px-3 py-2 text-xs rounded-lg border ${colors.border.light} ${colors.bg.input} outline-none focus:ring-1 ${colors.primary.ring}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{tC.company ?? '公司'}</label>
+                            <input
+                              required
+                              value={newLinkCustomer.company}
+                              onChange={(e) => setNewLinkCustomer(prev => ({ ...prev, company: e.target.value }))}
+                              placeholder={tC.company ?? '公司'}
+                              className={`w-full px-3 py-2 text-xs rounded-lg border ${colors.border.light} ${colors.bg.input} outline-none focus:ring-1 ${colors.primary.ring}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">{roleLabel}</label>
+                            <input
+                              value={newLinkCustomer.role}
+                              onChange={(e) => setNewLinkCustomer(prev => ({ ...prev, role: e.target.value }))}
+                              placeholder={roleLabel}
+                              className={`w-full px-3 py-2 text-xs rounded-lg border ${colors.border.light} ${colors.bg.input} outline-none focus:ring-1 ${colors.primary.ring}`}
+                            />
+                          </div>
                           <div className="flex gap-2 pt-1">
                             <button type="button" onClick={() => { setShowAddCustomerInLink(false); setNewLinkCustomer({ name: '', company: '', role: '' }); }} className={`flex-1 py-2 rounded-xl text-xs font-bold border ${colors.border.light} ${colors.text.secondary} ${colors.bg.hover}`}>
                               {tInt.cancel ?? '取消'}

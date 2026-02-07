@@ -456,19 +456,19 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
         />
       )}
 
-      {/* 编辑日程对话框 */}
+      {/* 编辑日程对话框：使用主题色 */}
       {editingScheduleId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pointer-events-none">
-          <div className="bg-white rounded-xl border border-emerald-200 shadow-2xl w-full max-w-md p-4 space-y-2.5 pointer-events-auto">
+          <div className={`${colors.bg.card} rounded-xl border ${colors.border.accent} shadow-2xl w-full max-w-md p-4 space-y-2.5 pointer-events-auto`}>
             <div className="flex justify-between items-center mb-2">
-              <span className="text-[10px] font-bold text-emerald-700">{t.edit || '编辑日程'}</span>
+              <span className={`text-[10px] font-bold ${colors.text.accent}`}>{t.edit || '编辑日程'}</span>
               <button 
                 type="button" 
                 onClick={() => { 
                   setEditingScheduleId(null); 
                   setEditingSchedule({ title: '', date: '', time: '' }); 
                 }} 
-                className="text-emerald-600 p-1 rounded hover:bg-emerald-100"
+                className={`${colors.text.accent} p-1 rounded ${colors.bg.hover}`}
               >
                 <X size={14} />
               </button>
@@ -490,7 +490,7 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
                 required 
                 placeholder={t.placeholder_title || t.subject} 
                 rows={3}
-                className="w-full px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400 resize-none" 
+                className={`w-full px-3 py-2 ${colors.bg.input} border ${colors.border.accent} rounded-lg text-xs outline-none ${colors.primary.focusRing} resize-none`}
                 value={editingSchedule.title} 
                 onChange={e => setEditingSchedule({...editingSchedule, title: e.target.value})} 
               />
@@ -498,18 +498,18 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
                 <input 
                   type="date" 
                   required 
-                  className="px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" 
+                  className={`px-3 py-2 ${colors.bg.input} border ${colors.border.accent} rounded-lg text-xs outline-none ${colors.primary.focusRing}`}
                   value={editingSchedule.date} 
                   onChange={e => setEditingSchedule({...editingSchedule, date: e.target.value})} 
                 />
                 <input 
                   type="time" 
-                  className="px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" 
+                  className={`px-3 py-2 ${colors.bg.input} border ${colors.border.accent} rounded-lg text-xs outline-none ${colors.primary.focusRing}`}
                   value={editingSchedule.time} 
                   onChange={e => setEditingSchedule({...editingSchedule, time: e.target.value})} 
                 />
               </div>
-              <button type="submit" className="w-full py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-xs btn-active-scale">{t.confirm}</button>
+              <button type="submit" className={`w-full py-2.5 ${colors.button.primary} rounded-xl font-bold text-xs btn-active-scale`}>{t.confirm}</button>
             </form>
           </div>
         </div>
@@ -517,19 +517,19 @@ const CustomerDetailPage: React.FC<Props> = ({ customers, interactions, schedule
 
       {showAddSchedule && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50">
-          <div className="fixed left-0 right-0 bottom-14 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] py-2 px-3">
-            <div className="mb-3 pt-2 border-t border-emerald-100 bg-emerald-50/50 rounded-xl px-3 pb-3">
+          <div className={`fixed left-0 right-0 bottom-14 ${colors.bg.card} border-t ${colors.border.light} shadow-[0_-4px_20px_rgba(0,0,0,0.06)] py-2 px-3`}>
+            <div className={`mb-3 pt-2 border-t ${colors.border.accent} rounded-xl px-3 pb-3 ${theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50/80'}`}>
               <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] font-bold text-emerald-700">{t.quick_schedule || t.manual}</span>
-                <button type="button" onClick={() => setShowAddSchedule(false)} className="text-emerald-600 p-1 rounded hover:bg-emerald-100"><X size={14} /></button>
+                <span className={`text-[10px] font-bold ${colors.text.accent}`}>{t.quick_schedule || t.manual}</span>
+                <button type="button" onClick={() => setShowAddSchedule(false)} className={`${colors.text.accent} p-1 rounded ${colors.bg.hover}`}><X size={14} /></button>
               </div>
               <form onSubmit={(e)=>{e.preventDefault(); onAddSchedule({id:'qs-'+Date.now(), ...newSchedule, customerId: customer.id, status:'pending'}); setShowAddSchedule(false); setNewSchedule({ title: '', date: '', time: '' });}} className="space-y-2.5">
-                <input required placeholder={t.placeholder_title || t.subject} className="w-full px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" value={newSchedule.title} onChange={e=>setNewSchedule({...newSchedule, title: e.target.value})} />
+                <input required placeholder={t.placeholder_title || t.subject} className={`w-full px-3 py-2 ${colors.bg.input} border ${colors.border.accent} rounded-lg text-xs outline-none ${colors.primary.focusRing}`} value={newSchedule.title} onChange={e=>setNewSchedule({...newSchedule, title: e.target.value})} />
                 <div className="grid grid-cols-2 gap-2">
-                  <input type="date" required className="px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" value={newSchedule.date} onChange={e=>setNewSchedule({...newSchedule, date: e.target.value})} />
-                  <input type="time" className="px-3 py-2 bg-white border border-emerald-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-400" value={newSchedule.time} onChange={e=>setNewSchedule({...newSchedule, time: e.target.value})} />
+                  <input type="date" required className={`px-3 py-2 ${colors.bg.input} border ${colors.border.accent} rounded-lg text-xs outline-none ${colors.primary.focusRing}`} value={newSchedule.date} onChange={e=>setNewSchedule({...newSchedule, date: e.target.value})} />
+                  <input type="time" className={`px-3 py-2 ${colors.bg.input} border ${colors.border.accent} rounded-lg text-xs outline-none ${colors.primary.focusRing}`} value={newSchedule.time} onChange={e=>setNewSchedule({...newSchedule, time: e.target.value})} />
                 </div>
-                <button type="submit" className="w-full py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-xs btn-active-scale">{t.confirm}</button>
+                <button type="submit" className={`w-full py-2.5 ${colors.button.primary} rounded-xl font-bold text-xs btn-active-scale`}>{t.confirm}</button>
               </form>
             </div>
           </div>

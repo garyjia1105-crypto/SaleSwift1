@@ -11,18 +11,36 @@ import {
   Cpu,
   Eye,
   EyeOff,
-  Key
+  Key,
+  Briefcase
 } from 'lucide-react';
 import { translations, Language } from '../translations';
 import { Theme } from '../App';
 
+/** 行业选项：value 存库，label 按语言展示 */
+const INDUSTRY_OPTIONS: { value: string; label: Record<Language, string> }[] = [
+  { value: '', label: { zh: '不选', en: 'Not set', ja: '選択しない', ko: '선택 안 함' } },
+  { value: 'internet', label: { zh: '互联网', en: 'Internet', ja: 'IT・インターネット', ko: '인터넷' } },
+  { value: 'finance', label: { zh: '金融', en: 'Finance', ja: '金融', ko: '금융' } },
+  { value: 'education', label: { zh: '教育', en: 'Education', ja: '教育', ko: '교육' } },
+  { value: 'manufacturing', label: { zh: '制造', en: 'Manufacturing', ja: '製造', ko: '제조' } },
+  { value: 'retail', label: { zh: '零售', en: 'Retail', ja: '小売', ko: '소매' } },
+  { value: 'healthcare', label: { zh: '医疗', en: 'Healthcare', ja: '医療', ko: '의료' } },
+  { value: 'realestate', label: { zh: '房地产', en: 'Real Estate', ja: '不動産', ko: '부동산' } },
+  { value: 'services', label: { zh: '服务业', en: 'Services', ja: 'サービス', ko: '서비스' } },
+  { value: 'government', label: { zh: '政府/公共', en: 'Government', ja: '政府・公共', ko: '정부/공공' } },
+  { value: 'other', label: { zh: '其他', en: 'Other', ja: 'その他', ko: '기타' } },
+];
+
 interface Props {
-  user: { email: string; displayName: string } | null;
+  user: { email: string; displayName: string; industry?: string } | null;
   onLogout: () => void;
   lang: Language;
   onSetLanguage: (lang: Language) => void;
   theme: Theme;
   onSetTheme: (theme: Theme) => void;
+  industry: string;
+  onSetIndustry: (industry: string) => void;
   avatar: string | null;
   onSetAvatar: (avatar: string | null) => void;
   apiKey: string;
@@ -82,6 +100,8 @@ const ProfilePage: React.FC<Props> = ({
   onSetLanguage, 
   theme, 
   onSetTheme, 
+  industry,
+  onSetIndustry,
   avatar, 
   onSetAvatar,
   apiKey,
@@ -145,6 +165,23 @@ const ProfilePage: React.FC<Props> = ({
           {user?.email || ''}
         </p>
       </header>
+
+      <div className={`rounded-2xl border soft-shadow overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+        <MenuItem icon={<Briefcase />} label={t.industry} color="text-amber-500" theme={theme}>
+          <select
+            value={industry}
+            onChange={(e) => onSetIndustry(e.target.value)}
+            className={`min-w-[120px] text-[10px] font-bold py-1.5 pl-2 pr-6 rounded-lg border outline-none appearance-none bg-no-repeat bg-right ${
+              theme === 'dark' ? 'bg-gray-800 border-gray-600 text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-700'
+            }`}
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E")`, backgroundPosition: 'right 6px center' }}
+          >
+            {INDUSTRY_OPTIONS.map((opt) => (
+              <option key={opt.value || 'none'} value={opt.value}>{opt.label[lang]}</option>
+            ))}
+          </select>
+        </MenuItem>
+      </div>
 
       <div className={`rounded-2xl border soft-shadow overflow-hidden ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
         <div className={`px-4 py-3 border-b ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-400' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>

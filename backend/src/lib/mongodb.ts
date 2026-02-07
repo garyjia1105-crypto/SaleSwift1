@@ -40,6 +40,7 @@ const userSchema = new mongoose.Schema(
     avatar: { type: String },
     language: { type: String, default: 'zh' },
     theme: { type: String, default: 'classic' },
+    industry: { type: String, default: '' }, // 用户所在行业，用于个人资料
     authProvider: { type: String, enum: ['email', 'google'], required: true },
   },
   { timestamps: true }

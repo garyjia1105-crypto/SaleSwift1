@@ -65,7 +65,7 @@ const App: React.FC = () => {
     const th = localStorage.getItem('theme');
     return (VALID_THEMES.includes(th as Theme) ? th : 'classic') as Theme;
   });
-  const [user, setUser] = useState<{ email: string; displayName: string } | null>(null);
+  const [user, setUser] = useState<{ email: string; displayName: string; industry?: string } | null>(null);
   const [avatar, setAvatar] = useState<string | null>(() => localStorage.getItem('user_avatar'));
   const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem('custom_api_key') || '');
   const [aiModel, setAiModel] = useState<string>(() => localStorage.getItem('custom_ai_model') || 'gemini-3-flash-preview');
@@ -136,7 +136,7 @@ const App: React.FC = () => {
       api.coursePlans.list(),
     ])
       .then(([me, ints, custs, scheds, plans]) => {
-        setUser({ email: me.email, displayName: me.displayName ?? me.email.split('@')[0] });
+        setUser({ email: me.email, displayName: me.displayName ?? me.email.split('@')[0], industry: me.industry ?? '' });
         if (me.avatar) setAvatar(me.avatar);
         
         let themeUpdated = false;
@@ -495,6 +495,8 @@ const App: React.FC = () => {
                   onSetLanguage={setLanguage} 
                   theme={theme} 
                   onSetTheme={setTheme}
+                  industry={user?.industry ?? ''}
+                  onSetIndustry={(v) => { setUser((prev) => (prev ? { ...prev, industry: v } : null)); api.users.patchMe({ industry: v }).catch(() => {}); }}
                   avatar={avatar} 
                   onSetAvatar={(v) => { setAvatar(v); if (v) api.users.patchMe({ avatar: v }).catch(() => {}); }}
                   apiKey={apiKey}
